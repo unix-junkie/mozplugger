@@ -1,0 +1,46 @@
+Description: Small adjustments to the buildsystem.
+ Pass DESTDIR to the Makefile.
+ Don't install mozpluggerrc.
+Author: Alessio Treglia <alessio@debian.org>
+Forwarded: no
+---
+ Makefile.in |   19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+--- mozplugger.orig/Makefile.in
++++ mozplugger/Makefile.in
+@@ -1,7 +1,7 @@
+ # @configure_input@
+ 
+ # For building rpms
+-root=
++root=$(DESTDIR)
+ 
+ # For installing
+ prefix=@prefix@
+@@ -160,17 +160,16 @@ localinstall_opera:
+ 	make localinstall BROWSERDIR=.opera
+ 
+ install:
+-	-@install -d @bindir@
+-	-@install -d $(prefix)$(libprefix)/mozilla/plugins
+-	-@install -d @mandir@/man7
+-	-@install -d @sysconfdir@
+-	install mozplugger-helper     @bindir@
+-	install mozplugger-controller @bindir@
+-	install mozplugger-linker     @bindir@
++	-@install -d $(root)@bindir@
++	-@install -d $(root)$(prefix)$(libprefix)/mozilla/plugins
++	-@install -d $(root)@mandir@/man7
++	-@install -d $(root)@sysconfdir@
++	install mozplugger-helper     $(root)@bindir@
++	install mozplugger-controller $(root)@bindir@
++	install mozplugger-linker     $(root)@bindir@
+ 	for a in ${PLUGINDIRS}; do install mozplugger.so $$a ; done
+ #	cp mozplugger.so $(prefix)$(libprefix)/mozilla/plugins/
+-	install $(srcdir)/mozpluggerrc  @sysconfdir@
+-	install $(srcdir)/mozplugger.7  @mandir@/man7/
++	install $(srcdir)/mozplugger.7  $(root)@mandir@/man7/
+ 
+ uninstall:
+ 	rm -f @mandir@/man7/mozplugger.7

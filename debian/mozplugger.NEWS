@@ -1,0 +1,17 @@
+mozplugger (1.14.2-2) experimental; urgency=low
+
+    The update-mozpluggerrc script has been included in order to fix the
+    bug#275766. Since the /etc/mozpluggerrc file may become pretty
+    unmanageable, the old config file has been split into several .conf
+    files installed under /etc/mozpluggerrc.d/, and it gets reassembled
+    by the update-mozpluggerrc script.
+    So if users want to customize the global configuration, they need to
+    edit those files or adding/removing new ones into the above path, then
+    run the following (as root):
+    
+        # /usr/sbin/update-mozplugger
+    
+    A new /etc/mozpluggerrc file is created and the changes will take
+    effects after restarting the web browser.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 24 Nov 2010 15:46:31 +0100

@@ -1,0 +1,754 @@
+mozplugger (1.14.5-2) unstable; urgency=low
+
+  * QA upload.
+  * Orphaning this.
+
+ -- Alessio <alessio@debian.org>  Fri, 16 Aug 2013 09:30:19 +0100
+
+mozplugger (1.14.5-1) unstable; urgency=low
+
+  * New upstream release.
+  * Remove 11-processes_left_behind.patch, was applied upstream.
+  * Refresh patches.
+  * Update debian/rules, upstream replaced the pure Makefile-based
+    buildsystem with autoconf.
+  * debian/mozpluger.install:
+    - Install mozplugger.so by hand, the buildsystem is buggy.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 21 May 2012 02:37:00 +0200
+
+mozplugger (1.14.3-7) unstable; urgency=low
+
+  * Don't leave processes in background after they've become unnecessary.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 03 Jan 2012 11:34:57 +0100
+
+mozplugger (1.14.3-6) unstable; urgency=low
+
+  * Turn off DEBUG mode (Closes: #619223).
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 28 Nov 2011 01:37:29 +0100
+
+mozplugger (1.14.3-5) unstable; urgency=low
+
+  * Install mozplugger in /usr/lib/mozilla/plugins/ only (Closes: #638459)
+    Thanks to Gabriele Giacone for the report.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 20 Aug 2011 09:40:01 +0200
+
+mozplugger (1.14.3-4) unstable; urgency=low
+
+  * Fix small typo in debian/control which causes mozplugger to install
+    redundant dependencies (Closes: #635678).
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 28 Jul 2011 12:55:03 +0200
+
+mozplugger (1.14.3-3) unstable; urgency=low
+
+  * Update chromium packages' names.
+  * Reintroduce a Suggests list (Closes: #466183).
+  * Remove -Od from timidity command line (LP: #796869).
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 10 Jul 2011 10:50:35 +0200
+
+mozplugger (1.14.3-2) unstable; urgency=low
+
+  * Fix path of /usr/lib/xscreensaver/molecule (Closes: #617292).
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 28 Apr 2011 13:33:08 +0200
+
+mozplugger (1.14.3-1) unstable; urgency=low
+
+  * Imported Upstream version 1.14.3, fixes upstream bugs:
+    - 23735: Add option to configure.ac to allow build with
+      needs_xembed always true
+    - 23734: Use autoconf to reduce complexity of supporting
+      different builds
+    - 23733: mozplugger rejects URLS that contains semicolons.
+    - 23732: When creating temporary file no check is made for
+      bad characters.
+  * debian/rules:
+    - Don't use the legacy /usr/lib/{firefox,xulrunner-addons}
+      locations on Ubuntu.
+  * debian/clean:
+    - Clean debian/mozplugger.links, remove override_dh_auto_clean
+      from debian/rules.
+  * debian/control:
+    - Add xulrunner-2.0 support.
+  * Refresh patches.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 06 Mar 2011 09:03:33 +0100
+
+mozplugger (1.14.2-5) unstable; urgency=low
+
+  * Upload to unstable.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 08 Feb 2011 19:11:57 +0100
+
+mozplugger (1.14.2-4) experimental; urgency=low
+
+  * Build with -DDEBUG.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 10 Jan 2011 11:14:39 +0100
+
+mozplugger (1.14.2-3) experimental; urgency=low
+
+  * Add rekonq to the supported browsers list (LP: #682241).
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 28 Nov 2010 10:36:45 +0100
+
+mozplugger (1.14.2-2) experimental; urgency=low
+
+  * Fix evince behavior when opening PostScript files.
+  * Provide an update-mozpluggerrc script to regenerate
+    /etc/mozpluggerrc from the contents of the directory
+    /etc/mozpluggerrc.d/ (Closes: #275766).
+  * Handle the removal of the old conffile.
+  * Pre-Depends on dpkg (>= 1.15.7.2).
+  * Drop CDBS, switch to DH 7 short-form.
+  * Generate debian/mozplugger.links file depending on the distribution
+    on which the package is built. This reduces the delta to 0.
+  * debian/00Makefile.patch:
+    - Don't install mozpluggerrc.
+    - Add header DEP-3 compliant.
+  * Merge Ubuntu changelog entries.
+  * Add NEWS.Debian file.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 24 Nov 2010 15:46:31 +0100
+
+mozplugger (1.14.2-1ubuntu1) natty; urgency=low
+
+  * Merge from debian experimental, Ubuntu remaining changes:
+    - Replace ice{weasel,ape} with firefox,xulrunner-addons in
+      debian/mozplugger.links file.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Sat, 16 Oct 2010 12:06:10 +0200
+
+mozplugger (1.14.2-1) experimental; urgency=low
+
+  * New upstream release.
+  * Drop debian/patches/03-honor_needs_xembed.patch, applied upstream.
+  * Refresh debian/patches/01-manpages.patch patch.
+  * Add local-options file into debian/source/.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 22 Sep 2010 16:23:15 +0200
+
+mozplugger (1.14.1-2~exp3ubuntu1) maverick; urgency=low
+
+  * Great news: this works with Chromium browser!
+  * Merge with Debian experimental, remaining changes:
+    - Replace ice{weasel,ape} with firefox,xulrunner-addons in
+      debian/mozplugger.links file.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Mon, 13 Sep 2010 13:04:08 +0200
+
+mozplugger (1.14.1-2~exp3) experimental; urgency=low
+
+  * Add Chromium browser support in mozpluggerrc (Closes: #582176).
+  * Re-introduce epiphany in the Depends field.
+  * Add chromium-browser to Depends field.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 13 Sep 2010 12:52:13 +0200
+
+mozplugger (1.14.1-2~exp2) experimental; urgency=low
+
+  * Mozplugger seems ignoring needs_xembed flag; attempt to make it able
+    to work with Chromium browser.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 11 Sep 2010 11:45:37 +0200
+
+mozplugger (1.14.1-2~exp1) experimental; urgency=low
+
+  * debian/patches/02-mozpluggerrc.patch:
+    - Try to embed Evince (Closes: #588833).
+    - Remove kdpf since it is no longer available (LP: #303623).
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 05 Sep 2010 11:15:14 +0200
+
+mozplugger (1.14.1-1) unstable; urgency=low
+
+  * New upstream bugfix-only release:
+    - Don't store temporary files in $HOME (Closes: #588130).
+    - Use NPP_StreamAsFile with webkit based browsers.
+    - Embedded objects now have a property called "isPlaying", which
+      return true if the application is running, false otherwise.
+  * Merge Ubuntu changelog entries.
+  * Update Standards to 3.9.1.
+  * Update watch file.
+  * Refresh debian/patches/01-manpages.patch patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 05 Sep 2010 10:34:08 +0200
+
+mozplugger (1.14.0-2ubuntu1) maverick; urgency=low
+
+  * Merge with debian unstable, remaining changes:
+    - debian/mozplugger.links: Replace ice{weasel,ape} with
+      firefox,xulrunner-addons.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Sun, 27 Jun 2010 19:36:04 +0200
+
+mozplugger (1.14.0-2) unstable; urgency=low
+
+  * Add debian/source/format file.
+  * Switch to format 3.0 (quilt).
+  * Bump priority of firefox up, it should come just after iceweasel.
+  * Add .gitignore file.
+  * Add debian/gbp.conf file.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 26 Jun 2010 16:28:00 +0200
+
+mozplugger (1.14.0-1ubuntu1) maverick; urgency=low
+
+  * Merge with Debian unstable, Ubuntu remaining changes:
+    - debian/mozplugger.links: Replace ice{weasel,ape} with
+      firefox,xulrunner-addons.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Thu, 17 Jun 2010 22:21:02 +0200
+
+mozplugger (1.14.0-1) unstable; urgency=low
+
+  * Merge Ubuntu changelog entries.
+  * New upstream release.
+  * Change my mail address.
+  * Refresh patches.
+  * Remove final blank line from the description.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 15 Jun 2010 09:58:58 +0200
+
+mozplugger (1.13.3-1ubuntu1) lucid; urgency=low
+
+  * Merge from debian unstable, Ubuntu remaining changes:
+    - debian/mozplugger.links:
+      + Replace ice{weasel,ape} with firefox,xulrunner-addons.
+    - This closes LP: #439540.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Sat, 17 Apr 2010 10:47:53 +0200
+
+mozplugger (1.13.3-1) unstable; urgency=low
+
+  * New upstream release:
+    - Fixes upstream bug #22723 (Closes: #519832).
+  * Refresh 01-manpages.patch and add more patches.
+  * Add README.source to document howto patch the sources.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Sat, 17 Apr 2010 01:15:53 +0200
+
+mozplugger (1.13.2-2) unstable; urgency=low
+
+  * Add xulrunner-1.9.{1,2} support (Closes: #575532).
+  * Don't depend on epiphany-browser, see bug #566857.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Thu, 15 Apr 2010 19:09:23 +0200
+
+mozplugger (1.13.2-1ubuntu1) lucid; urgency=low
+
+  * Merge from debian testing (LP: #553855).  Remaining changes:
+    - debian/control: 
+      + Bump xulrunner depends to xulrunner-1.9.2 (LP: #553850)
+      + Remove epiphany-browser from Suggests field, see Debian bug #566857 for
+        more information.
+    - debian/mozplugger.links:
+      + Replace ice{weasel,ape} with firefox,xulrunner-addons.
+
+ -- Micah Gersten <micahg@ubuntu.com>  Fri, 02 Apr 2010 12:03:28 -0500
+
+mozplugger (1.13.2-1) unstable; urgency=low
+
+  * New upstream release:
+    - Fix upstream's #22440 bug introduced by 1.13.1.
+  * Bump Standards.
+  * Switch to quilt.
+  * Refresh patches.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Sat, 20 Feb 2010 01:27:43 +0100
+
+mozplugger (1.13.1-1ubuntu1) lucid; urgency=low
+
+  * Merge from debian, remaining changes:
+    - debian/mozplugger.links:
+      + Replace ice{weasel,ape} with firefox,xulrunner-addons.
+  * Remove epiphany-browser from Suggests field, see Debian bug #566857 for
+    more information.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Thu, 28 Jan 2010 14:19:10 +0100
+
+mozplugger (1.13.1-1) unstable; urgency=low
+
+  * New upstream release 1.13.1.
+  * Refresh patches.
+  * Update Vcs-* fields, the packaging has been moved to Git.
+  * The previous upload closed the wrong ITA bug: Closes: #557588.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Wed, 27 Jan 2010 11:57:50 +0100
+
+mozplugger (1.13.0-2) unstable; urgency=low
+
+  * Adopting this (Closes: #557558).
+  * debian/control:
+    - Bump Stanadards-Versions.
+    - Add ${misc:Depends} macro to the Depends field.
+    - Remove XS- prefix from Vcs-* fields.
+    - Allow uploads by Debian Maintainers.
+    - Append firefox | abrowser to the Depends field value.
+  * debian/copyright:
+    - Fix copyright-refers-to-versionless-license-file.
+  * Link usr/share/man/man1/mozplugger-controller.1.gz to
+    usr/share/man/man1/mozplugger-linker.1.gz.
+  * debian/patches/01-manpages.patch:
+    - Fix errors in mozplugger.7 manpage.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Thu, 14 Jan 2010 08:45:43 +0100
+
+mozplugger (1.13.0-1ubuntu1) lucid; urgency=low
+
+  * Merge from debian testing, Ubuntu remaining changes:
+    - debian/control:
+      + Replace Depends on iceweasel | iceape-browser with firefox | abrowser.
+    - debian/mozplugger.links:
+      + Replace ice{weasel,ape} with firefox,xulrunner-addons.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Thu, 31 Dec 2009 14:24:17 +0100
+
+mozplugger (1.13.0-1) unstable; urgency=low
+
+  * New upstream version
+  * Oprphan package
+
+ -- Ari Pollak <ari@debian.org>  Sun, 22 Nov 2009 21:21:11 -0500
+
+mozplugger (1.12.1-2) unstable; urgency=low
+
+  * Add xulrunner-1.9 to optional depends (Closes: #535314)
+
+ -- Ari Pollak <ari@debian.org>  Mon, 10 Aug 2009 12:13:49 -0400
+
+mozplugger (1.12.1-1ubuntu1) karmic; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    - debian/control:
+      + Change Depends on iceweasel to firefox.
+      + Remove Depends on iceape-browser.
+      + Add xulrunner-1.9 to Depends field.
+    - debian/mozplugger.links:
+      + Remove iceape link.
+      + Move iceweasel link to firefox.
+      + Add xulrunner-1.9 link.
+  * Packages that Depend/Suggest/Recommend firefox (metapackages) must
+    alternatively Depend/Suggest/Recommend abrowser.
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Mon, 04 May 2009 11:58:31 +0200
+
+mozplugger (1.12.1-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Ari Pollak <ari@debian.org>  Sat, 02 May 2009 21:13:29 -0400
+
+mozplugger (1.12.0-1ubuntu1) jaunty; urgency=low
+
+  * Merge from debian unstable (LP: #316033), Ubuntu remaining changes:
+    - debian/control:
+      + Change iceape-browser dependency to mozilla-browser
+      + Depends on xulrunner-1.9
+    - debian/mozplugger.links:
+      + Remove iceape link
+      + Move iceweasel link to firefox
+      + Add xulrunner-1.9 link
+  * Change depends on iceweasel to firefox (LP: #272959).
+
+ -- Alessio Treglia <quadrispro@ubuntu.com>  Sun, 11 Jan 2009 11:45:25 +0100
+
+mozplugger (1.12.0-1) unstable; urgency=low
+
+  * New upstream version
+    - Adds support for okular (Closes: #478679)
+
+ -- Ari Pollak <ari@debian.org>  Sat, 10 Jan 2009 16:53:29 -0500
+
+mozplugger (1.10.2-2ubuntu1) intrepid; urgency=low
+
+  * Merge from Debian unstable. Ubuntu remaining changes:
+    - Changed iceape-browser dependency to mozilla-browser
+    - debian/mozplugger.links:
+      + dropped iceape link
+      + changed iceweasel to firefox
+  * xulrunner-1.9 support
+    - update debian/mozplugger.links
+    - update debian/control
+  * Updated standards version.
+
+ -- Emanuele Gentili <emgent@ubuntu.com>  Tue, 26 Aug 2008 14:12:10 +0200
+
+mozplugger (1.10.2-2) unstable; urgency=low
+
+  * debian/patches/01_amd64-swallow.patch:
+    - Apply patch from Loic Grenie (and accepted upstream) to fix swallowing
+      of windows on amd64 (Closes: #489755)
+
+ -- Ari Pollak <ari@debian.org>  Sun, 24 Aug 2008 16:46:12 -0400
+
+mozplugger (1.10.2-1ubuntu1) intrepid; urgency=low
+
+  * Merge from Debian unstable. Ubuntu remaining changes:
+    - Changed iceape-browser dependency to mozilla-browser
+    - debian/mozplugger.links:
+      + dropped iceape link
+      + changed iceweasel to firefox
+    - debian/control: Change Maintainer/XSBC-Original-Maintainer field
+  * xulrunner-1.9 support
+    - update debian/mozplugger.links
+    - update debian/control
+  * Updated standards version. 
+
+ -- Emanuele Gentili <emgent@ubuntu.com>  Mon, 14 Jul 2008 16:45:30 +0200
+
+mozplugger (1.10.2-1) unstable; urgency=low
+
+  * New upstream release
+  * Add XS-Vcs-Svn and Homepage headers to control file
+  * Remove obsolete Conflicts on plugger
+  * Properly encode UTF-8 characters in manpages (Closes: #441818)
+  * Bump standards version; no changes necessary
+
+ -- Ari Pollak <ari@debian.org>  Tue, 01 Apr 2008 20:44:12 -0400
+
+mozplugger (1.10.1-2ubuntu2) hardy; urgency=low
+
+  * xulrunner-1.9 support (LP: #202075)
+    - update debian/mozplugger.links
+    - update debian/control
+
+ -- Alexander Sack <asac@ubuntu.com>  Tue, 01 Apr 2008 02:31:29 +0200
+
+mozplugger (1.10.1-2ubuntu1) hardy; urgency=low
+
+  * Merge from Debian unstable. (LP: #195029) Ubuntu remaining changes:
+    - Changed iceape-browser dependency to mozilla-browser
+    - debian/mozplugger.links:
+      + dropped iceape link
+      + changed iceweasel to firefox
+    - debian/control: Change Maintainer/XSBC-Original-Maintainer field
+
+ -- Stefan Ebner <hellboy195@gmail.com>  Fri, 22 Feb 2008 10:31:41 +0100
+
+mozplugger (1.10.1-1ubuntu1) hardy; urgency=low
+
+  * Merge from Debian unstable (LP: #189803), Ubuntu remaining changes:
+    - Changed iceape-browser dependency to mozilla-browser
+    - debian/mozplugger.links:
+      + dropped iceape link
+      + changed iceweasel to firefox
+  * debian/control: Change Maintainer/XSBC-Original-Maintainer field
+
+ -- Pedro Fragoso <emberez@gmail.com>  Wed, 06 Feb 2008 10:50:02 +0000
+
+mozplugger (1.10.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Ari Pollak <ari@debian.org>  Tue, 05 Feb 2008 22:19:10 -0500
+
+mozplugger (1.8.0-4ubuntu1) hardy; urgency=low
+
+  * Merge from debian unstable, remaining changes:
+    + Changed iceape-browser dependency to mozilla-browser
+    + debian/mozplugger.links:
+      - dropped iceape link
+      - changed iceweasel to firefox
+
+ -- Stephan Hermann <sh@sourcecode.de>  Sun, 13 Jan 2008 11:09:11 +0100
+
+mozplugger (1.8.0-4) unstable; urgency=low
+
+  * Fix grammatical error in package description (Closes: #419453)
+  * Fix extraneous punctuation in acroread patch (Closes: #451387)
+
+ -- Ari Pollak <ari@debian.org>  Tue, 20 Nov 2007 16:35:49 -0500
+
+mozplugger (1.8.0-3ubuntu1) gutsy; urgency=low
+
+  * Merge from Debian unstable. Remaining Ubuntu changes:
+    + Changed iceape-browser dependency to mozilla-browser
+    + debian/mozplugger.links:
+      - dropped iceape link
+      - changed iceweasel to firefox (LP: #84088)
+  * Modify Maintainer value to match Debian-Maintainer-Field Spec
+
+ -- Stephan Hermann <sh@sourcecode.de>  Sun,  6 May 2007 16:36:07 +0200
+
+mozplugger (1.8.0-3) unstable; urgency=low
+
+  * Upload to unstable, no other changes
+
+ -- Ari Pollak <ari@debian.org>  Sun, 08 Apr 2007 13:22:01 -0400
+
+mozplugger (1.8.0-2) experimental; urgency=low
+
+  * Fix the plugin on 64-bit platforms like amd64 (Closes: #416495)
+  * Add optional dependency on opera (Closes: #409753)
+
+ -- Ari Pollak <ari@debian.org>  Sat, 07 Apr 2007 00:22:22 -0400
+
+mozplugger (1.8.0-1) experimental; urgency=low
+
+  * New upstream version
+  * Remove extraneous firefox plugin directory
+  * Update watch file
+
+ -- Ari Pollak <ari@debian.org>  Sat,  3 Feb 2007 19:16:23 -0500
+
+mozplugger (1.7.3-6ubuntu2) feisty; urgency=low
+
+  * Changed iceape-browser dependency to mozilla-browser
+  * debian/mozplugger.links:
+     - dropped iceape link
+     - changed iceweasel to firefox (LP: #84088)
+
+ -- Adrien Cunin <adri2000@gmail.com>  Fri,  9 Feb 2007 17:55:09 +0100
+
+mozplugger (1.7.3-6ubuntu1) feisty; urgency=low
+
+  * Switch iceweasel dependancy to firefox. (LP: #83175)
+
+ -- Steve Kowalik <stevenk@ubuntu.com>  Mon,  5 Feb 2007 00:00:45 +1100
+
+mozplugger (1.7.3-6) unstable; urgency=low
+
+  * Change mozilla-browser dependency to iceape-browser (Closes: #401768)
+
+ -- Ari Pollak <ari@debian.org>  Tue,  5 Dec 2006 15:30:06 -0500
+
+mozplugger (1.7.3-5) unstable; urgency=low
+
+  * Add support for iceape-browser (Closes: #401549)
+
+ -- Ari Pollak <ari@debian.org>  Mon,  4 Dec 2006 11:28:12 -0500
+
+mozplugger (1.7.3-4) unstable; urgency=low
+
+  * Install plugin to correct iceweasel directory instead of firefox
+    (Closes: #401418)
+
+ -- Ari Pollak <ari@debian.org>  Sun,  3 Dec 2006 16:06:29 -0500
+
+mozplugger (1.7.3-3) unstable; urgency=low
+
+  * Update package to work with iceweasel instead of firefox 
+  * Update mozplugger(7) manpage to reflect proper paths for
+    where mozpluggerrc and pluginreg.dat can be located (Closes: #368365)
+
+ -- Ari Pollak <ari@debian.org>  Tue, 21 Nov 2006 11:40:08 -0500
+
+mozplugger (1.7.3-2) unstable; urgency=low
+
+  * For some reason acroread's help is broken so we'll just assume 
+    the installed acroread is version 7.
+  * Move browser Recommends to Depends
+
+ -- Ari Pollak <ari@debian.org>  Sat, 20 May 2006 22:56:36 -0400
+
+mozplugger (1.7.3-1) unstable; urgency=low
+
+  * New upstream release
+    - Updates mozpluggerrc (Closes: #340686)
+    - Adds support for Acrobat Reader 7 (Closes: #303188, #311204)
+    - Fixes firefox resize problem (Closes: #343398)
+  * Hijack package, due to previous maintainer being unresponsive
+  * Acknowledge previous NMU (Closes: #347033)
+  * Update watch file (Closes: #332656)
+  * Update symlinks to be in /usr/lib/firefox instead of
+    /usr/lib/mozilla-firefox (Closes: #351553)
+  * Add upstream URL to package description (Closes: #335345)
+
+ -- Ari Pollak <ari@debian.org>  Tue, 25 Apr 2006 21:57:33 -0400
+
+mozplugger (1.7.1-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Remove Build-Dependency on xlibs-dev (Closes: #347033).
+  * Credit and Big Thanks to Justin Pryzby <justinpryzby@users.sourceforge.net>
+    for the patch and testing.
+
+ -- Amaya Rodrigo Sastre <amaya@debian.org>  Sat, 21 Jan 2006 20:30:20 +0100
+
+mozplugger (1.7.1-1) unstable; urgency=low
+
+  * New upstream (Closes: #274652)
+  * Added watch file (Closes: #292798)
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Wed, 19 Jan 2005 18:22:48 +0800
+
+mozplugger (1.6.2-2) unstable; urgency=low
+
+  * Remove mozilla-firebird from plugin directories (Closes: #274858)
+  * Add x-ms-asf-plugin to mozpluggerrc
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 19 Nov 2004 19:44:49 +0800
+
+mozplugger (1.6.2-1) unstable; urgency=low
+
+  * New upstream release (Closes: #274652)
+    - Fixes certain swallow bugs (Closes: #264955)
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sun,  3 Oct 2004 20:44:07 +0800
+
+mozplugger (1.6.1+1.6.2a-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 24 Sep 2004 11:23:41 +0800
+
+mozplugger (1.6.0-3) unstable; urgency=low
+
+  * Fix swallowing of xpdf.
+  * Don't specify audio output driver for mplayer (should be specified in
+    mplayer config).
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Tue, 10 Aug 2004 11:28:55 +0800
+
+mozplugger (1.6.0-2) unstable; urgency=low
+
+  * Added missing dependency for m4 (Closes: #262171).
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 30 Jul 2004 12:33:22 +0800
+
+mozplugger (1.6.0-1) unstable; urgency=low
+
+  * New upstream:
+    - includes M4 macro processing in mozpluggerrc
+    - xine and xmms are disabled by default - uncomment define(ENABLE_HELPERS))
+  * Updated standards version.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Mon, 12 Jul 2004 00:28:52 +0800
+
+mozplugger (1.5.9+1.6.0b-1) unstable; urgency=low
+
+  * New upstream release candidate.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sun, 11 Jul 2004 00:36:16 +0800
+
+mozplugger (1.5.2-1) unstable; urgency=low
+
+  * New upstream
+  * Use dh_link (Closes: #236945, #236698)
+  * Make xmms enqueue if we need to resort to xmms (Closes: #244335)
+  * Don't specify mplayer driver options on cmdline (Closes: #248006)
+  * Call OpenOffice.org by openoffice (Closes: #254790)
+  * Correct display of TIFFs (Closes: #255032)
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sun, 23 May 2004 18:35:37 +0800
+
+mozplugger (1.5.1-2) unstable; urgency=low
+
+  * Added mozilla-firefox support.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Wed,  3 Mar 2004 04:45:55 +0800
+
+mozplugger (1.5.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sat, 28 Feb 2004 09:55:58 +0800
+
+mozplugger (1.5.0+1.5.1b-1) unstable; urgency=low
+
+  * New upstream beta release.
+  * Add support for mozilla-firebird (Closes: #214033, #231498, #233309)
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sun,  1 Feb 2004 19:45:47 +0800
+
+mozplugger (1.5.0-1) unstable; urgency=low
+
+  * New upstream (Closes: #229161)
+    - Fixes occasional swallowing failures (Closes: #203425)
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 23 Jan 2004 21:56:52 +0800
+
+mozplugger (1.4.2-1) unstable; urgency=low
+
+  * New upstream:
+    - Fixes ia64 segfaults (Closes: #218361)
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 19 Dec 2003 20:32:52 +0800
+
+mozplugger (1.3.2-1) unstable; urgency=low
+
+  * New upstream - fixes regression in that stopped mozplugger from
+    finding helpers in certain directories.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Wed, 22 Oct 2003 19:26:23 +0800
+
+mozplugger (1.3.1-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Wed,  3 Sep 2003 00:23:50 +0800
+
+mozplugger (1.3.0-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sat,  5 Jul 2003 11:39:50 +0800
+
+mozplugger (1.2.2-1) unstable; urgency=low
+
+  * New upstream.
+  * Fixes non-functioning maxaspect code.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sat, 28 Jun 2003 11:35:48 +0800
+
+mozplugger (1.2.1-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sun, 15 Jun 2003 13:11:54 +0800
+
+mozplugger (1.2.0-1) unstable; urgency=low
+
+  * New upstream - swallowing code changes & restructuring.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Thu, 29 May 2003 16:54:04 +0800
+
+mozplugger (1.1.3-1) unstable; urgency=low
+
+  * New upstream - fixes crashes with Mozilla 1.3. Closes: #189142, #189124
+  * Added Build Depends on xlibs-dev. Closes: #190588
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 25 Apr 2003 11:02:06 +1000
+
+mozplugger (1.1.2-3) unstable; urgency=low
+
+  * NPL and MPL merged into copyright file for consistency
+  * Switched to dh_make from debmake
+  * Fixed certain cases when mozplugger did not swallow
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sun,  6 Apr 2003 17:09:44 +0800
+
+mozplugger (1.1.2-2) unstable; urgency=low
+
+  * Split back into .orig.tar.gz and .diff.gz
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sat, 29 Mar 2003 16:21:06 +0800
+
+mozplugger (1.1.2-1) unstable; urgency=low
+
+  * New upstream.
+  * Uploaded. Closes: #165556, #181718
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Sat, 15 Mar 2003 01:17:45 +0800
+
+mozplugger (1.1.1-2) unstable; urgency=low
+
+  * Clarification of copyright.
+  * Updated mozpluggerrc from upstream
+  * Bugfixes for 64-bit archs
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Fri, 21 Feb 2003 09:45:29 +0800
+
+mozplugger (1.1.1-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Bernard Blackham <bernard@blackham.com.au>  Wed, 19 Feb 2003 23:41:17 +0800

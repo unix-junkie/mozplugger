@@ -1,0 +1,39 @@
+Author: Alessio Treglia <alessio@debian.org>
+Description: Several patches to the mozpluggerrc file.
+ Try to embed Evince (Debian bug#588833)
+ Remove kdpf, no longer available (LP: #303623)
+ Add Chromium browser support (Debian bug#582176)
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=588833
+Bug-Ubuntu: https://launchpad.net/bugs/303623
+---
+ mozpluggerrc |   11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+--- mozplugger.orig/mozpluggerrc
++++ mozplugger/mozpluggerrc
+@@ -280,12 +280,11 @@ application/x-pdf:pdf:PDF file
+ text/pdf:pdf:PDF file
+ text/x-pdf:pdf:PDF file
+ 	ACROREAD()
+-	repeat noisy swallow(kpdf) fill: kpdf "$file"
+-	repeat noisy swallow(Xpdf) fill: xpdf -g +9000+9000 "$file"
+-	repeat noisy swallow(okular) fill: okular "$file"
+-        repeat noisy swallow(epdfview) fill: epdfview "$file"
++	repeat noisy swallow(Xpdf) fill needs_xembed: xpdf -g +9000+9000 "$file"
++	repeat noisy swallow(okular) fill needs_xembed: okular "$file"
++        repeat noisy swallow(epdfview) fill needs_xembed: epdfview "$file"
+ 	GV()
+-	repeat noisy fill exits: evince "$file"
++	repeat noisy swallow(evince) fill needs_xembed: evince "$file"
+ 
+ application/x-dvi:dvi:DVI file
+         repeat swallow(kdvi) fill: kdvi "$file"
+@@ -294,7 +293,7 @@ application/x-dvi:dvi:DVI file
+ application/x-postscript:ps:PostScript file
+ application/postscript:ps:PostScript file
+ 	GV()
+-	repeat noisy fill exits: evince "$file"
++	repeat noisy fill exits needs_xembed: evince "$file"
+ 
+ application/x-rtf:rtf:Rich Text Format
+ application/rtf:rtf:Rich Text Format

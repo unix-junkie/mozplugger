@@ -1,0 +1,58 @@
+Author: Alessio Treglia <quadrispro@ubuntu.com>
+Description: Fix mistakes in mozplugger.7 manpage file.
+Forwarded: https://www.mozdev.org/bugs/show_bug.cgi?id=24911
+---
+ mozplugger.7 |   13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+--- mozplugger.orig/mozplugger.7
++++ mozplugger/mozplugger.7
+@@ -1,4 +1,3 @@
+-.PU
+ .TH mozplugger 7  "2012 Jan 04"
+ .SH NAME
+ mozplugger \- a streaming multimedia plugin for UNIX mozilla
+@@ -50,7 +49,7 @@ commands used to handle those mime types
+ .br
+ 	video/quicktime: qt,mov: Mpeg video
+ .br
+-		: xanim +W$window -Zr +q +Ze +f $file
++		: xanim +W$window \-Zr +q +Ze +f $file
+ 
+ Each line describing a mime type has three fields:
+ 
+@@ -123,7 +122,7 @@ and
+ will be rejected if they do not match what is expected
+ from the associated HTML code (see later for details).
+ 
+-In addition for a command to be choosen the application has to be 
++In addition for a command to be chosen the application has to be
+ available. That is, MozPlugger will assume the first word of the command
+ is the name of an application and search $PATH for that application. If that
+ application is not found MozPlugger will skip that command line.
+@@ -281,8 +280,8 @@ Quicktime objects sometimes use this mec
+ .TP
+ .B needs_xembed
+ Some applications when embedded requires the Xembed protocol, other applications
+-dont want the Xembed protocol. Add or remove this flag if you find that you 
+-cannot move keyboard focus to the embedded window. Curently it appears QT4 based
++don't want the Xembed protocol. Add or remove this flag if you find that you
++cannot move keyboard focus to the embedded window. Currently it appears QT4 based
+ applications require this flag.
+ .SH ENVIRONMENT VARIABLES
+ There are some envirnoment variables that control the behaviour of Mozplugger.
+@@ -390,12 +389,12 @@ If using behind a non-transparent HTTP p
+ using the
+ .B stream
+ flag do not work. This is because the proxy settings are not passed to the 
+-application in the command line. To work around this situation, dont use the
++application in the command line. To work around this situation, don't use the
+ stream flag OR edit the mozpluggerrc file and passed in necessary proxy setiings
+ via the command line.
+ 
+ It has been found that certain combinations of browser and embedded application
+-dont allow keyboard focus in the embedded application, if this happens to you
++don't allow keyboard focus in the embedded application, if this happens to you
+ try adding or removing the "needs_xembed" flag from the associated command in
+ mozpluggerrc. 
+ 

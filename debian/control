@@ -1,0 +1,68 @@
+Source: mozplugger
+Section: web
+Priority: optional
+Maintainer: Debian QA Group <packages@qa.debian.org>
+Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 7),
+ libx11-dev,
+ libxt-dev,
+ x11proto-core-dev
+Vcs-Git: git://git.debian.org/collab-maint/mozplugger.git
+Vcs-Browser: http://git.debian.org/?p=collab-maint/mozplugger.git
+Homepage: http://mozplugger.mozdev.org
+
+Package: mozplugger
+Architecture: any
+Pre-Depends: dpkg (>= 1.15.7.2)
+Depends: m4,
+ ${shlibs:Depends},
+ iceweasel |
+ iceape-browser |
+ firefox |
+ abrowser |
+ galeon |
+ rekonq |
+ konqueror |
+ opera |
+ epiphany |
+ chromium (>> 10.0.648.114~r75702-1~) |
+ chromium-browser |
+ xulrunner-1.9 |
+ xulrunner-1.9.1 |
+ xulrunner-1.9.2 |
+ xulrunner-2.0,
+ ${misc:Depends}
+Suggests: bplay,
+ mikmod,
+ mpg123,
+ mpg321,
+ mplayer | mplayer2,
+ vorbis-tools,
+ sox,
+ playmidi,
+ sidplay-base,
+ splay,
+ timidity,
+ xcdroast,
+ xine-ui,
+ xmp,
+ libreoffice-common,
+ gqview,
+ qiv,
+ imagemagick,
+ evince | evince-gtk,
+ xpdf,
+ texlive-base,
+ abiword-common,
+ gnumeric,
+ rasmol,
+ xscreensaver-gl
+Description: Plugin allowing external viewers to be launched inside Mozilla
+ mozplugger allows you to seamlessly integrate external applications
+ to view files downloaded from the web that Mozilla can not normally
+ handle. The application is embedded within a Mozilla window as to act
+ like and feel like a true plugin.
+ .
+ This allows you to view PDFs, Postscript files, animations and
+ movies, amongst other file types all from within Mozilla (with
+ supporting applications).

@@ -1,0 +1,3 @@
+debian/mozpluggerrc.d etc/
+debian/update-mozpluggerrc usr/sbin
+mozplugger.so usr/lib/mozilla/plugins/

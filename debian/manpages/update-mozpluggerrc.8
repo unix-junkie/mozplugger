@@ -1,0 +1,29 @@
+.TH UPDATE-MOZPLUGGERRC 8 "November 24, 2010"
+.SH NAME
+update-mozpluggerrc \- create or update mozplugger's configuration
+.SH SYNOPSIS
+.B update-mozpluggerrc
+.RI "[ " options " ]"
+.SH DESCRIPTION
+\fBupdate-mozpluggerrc\fP assembles
+.IR /etc/mozpluggerrc
+using one or more templates found in
+.IR /etc/mozpluggerrc.d/ .
+.SH OPTIONS
+.TP
+\fB\-h\fR
+Show a short help message
+.TP
+\fB\-O\fR
+Write to stdout rather than modifying the file
+.PP
+.SH SEE ALSO
+.BR mozplugger (7).
+.SH AUTHOR
+mozplugger was written by Fredrik H\[:u]binette <hubbe@hubbe.net>,
+Louis Bavoil <louis@bavoil.net> and Peter Leese <hubbe@hubbe.net>.
+.PP
+update-mozpluggerrc was written by Alessio Treglia <alessio@debian.org>.
+.PP
+This manual page was written by Alessio Treglia <alessio@debian.org>
+for the Debian Project (but may be used by others).
