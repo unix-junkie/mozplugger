@@ -17,19 +17,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
  */
 
-#ifndef _NPN_GET_HELPERS_H_
-#define _NPN_GET_HELPERS_H_
+#ifndef _SCRIPTABLE_OBJ_H_
+#define _SCRIPTABLE_OBJ_H_
 
-extern void get_api_version(void);
 
-extern NPBool does_browser_have_resize_bug(void);
-
-extern NPBool does_browser_support_xembed(void);
-
-extern NPNToolkitType get_browser_toolkit(NPP instance);
-
-extern NPBool does_browser_support_key_handling(NPP instance);
-
-extern const char * NPPVariableToString(NPPVariable variable);
+extern NPObject * getPluginScritableObject(NPP instance, NPError * pErr);
 
 #endif

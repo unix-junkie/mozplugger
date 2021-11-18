@@ -1,7 +1,12 @@
-# Configure file for MozPlugger 1.14.4
-# Version: Jan 04, 2012
+# Configure file for MozPlugger
+# Version: Jan 20, 2013
+#
+# This file is part of mozplugger a fork of plugger, for list of developers 
+# see the README file.
 #
 # Commands which are not installed on your system will not be used.
+#
+# NOTE!! After changing this file, mozplugger-update must be executed.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +20,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
 
 
-###################
-### m4 macros   ###
-###################
+### m4 macros ###
 
 changequote([,])
 
@@ -28,7 +31,7 @@ changequote([,])
 
 ### MPlayer
 
-define(MP_CMD,[mplayer -really-quiet -nojoystick -nofs -zoom -vo xv,x11 -ao esd,alsa,oss,arts,null -osdlevel 0 $1 </dev/null])
+define(MP_CMD,[mplayer -quiet -nojoystick -nofs -zoom -osdlevel 0 $1 </dev/null])
 
 define(MP_EMBED,[embed noisy ignore_errors: MP_CMD(-xy $width -wid $window $1)])
 
@@ -48,9 +51,9 @@ define(MP_VIDEO_PLAYLIST, [fmatch($1) MP_EMBED(-playlist "$file")
 # Special case for Quicktime
 define(MP_LINKS,[stream links noisy ignore_errors: MP_CMD($1)])
 
-define(MP_AUDIO,[mplayer -really-quiet -nojoystick $1 </dev/null])
+define(MP_AUDIO,[mplayer -quiet -nojoystick $1 </dev/null])
 
-define(MP_AUDIO_STREAM,[controls stream noisy ignore_errors: mplayer -really-quiet -nojoystick $1 "$file" </dev/null])
+define(MP_AUDIO_STREAM,[controls stream noisy ignore_errors: mplayer -quiet -nojoystick $1 "$file" </dev/null])
 
 ### Totem
 
@@ -70,21 +73,18 @@ define(TM_LINKS,[stream links nokill noembed noisy ignore_errors: TM_CMD($1)])
 define(TM_AUDIO_STREAM,[controls stream noisy ignore_errors: TM_CMD("$file")])
 
 ### OpenOffice
-define([OO],[swallow(VCLSalFrame) fill: ooffice2.0 -nologo -norestore -view $1 "$file"
-	swallow(VCLSalFrame) fill: ooffice -nologo -norestore -view $1 "$file"
-	swallow(VCLSalFrame) fill: soffice -nologo $1 "$file"])
-
-### Acrobat Reader
-define(ACROREAD, [repeat swallow(acroread) fill : acroread -openInNewWindow /a "$fragment" "$file"])
+# Note the single dash in front of the view command!
+define([OO],[swallow(VCLSalFrame) fill: ooffice2.0 -nologo -norestore -view "$file"
+	swallow(VCLSalFrame) fill: ooffice -nologo -norestore -view "$file"
+	swallow(libreoffice) fill: libreoffice --nologo --norestore --view "$file"
+	swallow(VCLSalFrame) fill: soffice --nologo --norestore -view "$file"])
 
 ### GV
 define(GV_OPTS,[--safer --quiet --antialias -geometry +9000+9000])
 define(GV_FLAGS,[repeat noisy swallow(gv) fill])
 define(GV,[GV_FLAGS(): gv GV_OPTS() "$file"])
 
-###################
-### Video       ###
-###################
+### Video ###
 
 video/mpeg:mpeg,mpg,mpe:MPEG animation
 video/x-mpeg:mpeg,mpg,mpe:MPEG animation
@@ -106,31 +106,6 @@ video/x-fli:fli,flc:FLI animation
 	TM_VIDEO_STREAM()
         nokill noisy: xine -pq "$file"
 
-application/x-mplayer2:*:Windows Media video
-video/x-ms-asf:asf,asx:Windows Media video
-video/x-ms-wm:wm:Windows Media video
-video/x-ms-wmv:wmv:Windows Media video
-video/x-ms-wvx:wvx:Windows Media video
-video/x-ms-asf-plugin:*:Window Media video
-        MP_VIDEO_PLAYLIST(%.asx)
-	MP_VIDEO_STREAM()
-	TM_VIDEO_STREAM()
-
-application/asx:asx:Windows Media video
-	MP_VIDEO_STREAM(-playlist)
-	TM_VIDEO_STREAM()
-
-application/x-quicktimeplayer:mov:Quicktime animation
-image/x-macpaint:pntg,mov:Quicktime animation
-video/quicktime:mov,qt:Quicktime animation
-video/x-quicktime:mov,qt:Quicktime animation
-	MP_VIDEO_STREAM()
-        MP_LINKS("$file")
-	TM_VIDEO_STREAM()
-        TM_LINKS("$file")
-	stream links : xine -pq "$file"
-	nokill noisy: xine -pq "$file"
-
 video/x-theora:ogg:OGG stream with video
 video/theora:ogg:OGG stream with video
 video/ogg:ogg:OGG stream with video
@@ -148,9 +123,7 @@ video/x-anim:iff,anim5,anim3,anim7:IFF animation
 	: xanim +Av100 -Zr +W$window +q +Ze +f "$file"
 
 
-##################
-### Audio      ###
-##################
+### Audio ###
 
 audio/mid:midi,mid:MIDI audio file
 audio/x-mid:midi,mid:MIDI audio file
@@ -201,6 +174,7 @@ application/ogg:ogg:OGG audio
 	controls stream noisy: ogg123 -q -b 128 "$file"
 	nokill noisy : xmms -e -p "$file"
 
+audio/flac:flac:FLAC audio
 audio/x-flac:flac:FLAC audio
 application/x-flac:flac:FLAC audio
 	MP_AUDIO_STREAM()
@@ -217,38 +191,7 @@ audio/x-basic:au,snd:Basic audio file
 	controls: play "$file"
 	controls: sox "$file" -t .au - > /dev/audio
 
-audio/wav:wav:Microsoft wave file
-audio/x-wav:wav:Microsoft wave file
-audio/x-pn-wav:wav:Microsoft wave file
-audio/x-pn-windows-acm:wav:Microsoft wave file
-        controls: play "$file"
-	controls: wavplay -q "$file"
-	controls noisy: bplay "$file"
-	controls: splay "$file"
-	nokill noisy : xmms -e -p "$file"
- 	repeat noisy swallow(alsaplayer): alsaplayer -q "$file"
-
-audio/x-pn-realaudio-plugin:rpm:RealPlayer Plugin Metafile
-audio/x-pn-realaudio:ra,rm,ram:Realaudio-plugin resource locator
-audio/x-realaudio:ra,rm,ram:RealAudio file
-application/vnd.rn-realmedia:rm:RealMedia file
-application/smil:smi:RealPlayer
-audio/vnd.rn-realaudio:ra,ram:RealAudio file
-audio/vnd.rn-realvideo:rv:RealVideo file
-	nokill stream: hxplay "$file"
-        nokill stream: realplay "$file"
-
-audio/x-ms-wax:wax:Windows Media Audio
-	MP_AUDIO_STREAM(-playlist-playlist))
-	TM_AUDIO_STREAM()
-
-audio/x-ms-wma:wma:Windows Media Audio
-	MP_AUDIO_STREAM()
-	TM_AUDIO_STREAM()
-
-#######################
-### Documents       ###
-#######################
+### Documents ###
 
 image/sun-raster:rs:SUN raster image
 image/x-sun-raster:rs:SUN raster image
@@ -262,7 +205,6 @@ image/x-tiff:tiff,tif:TIFF image
 	exits: display -window $window -backdrop "$file"
 	repeat noisy swallow(gqview) fill: gqview -t "$file"
 	swallow(:) maxaspect: xv -ima -igeom +9000+9000 -geometry +9000+9000 "$file"
-	repeat swallow(display): display "$file"
 	repeat swallow(Sdtimage) fill: sdtimage "$file"
 	swallow(*qiv:) fill maxaspect: qiv -n "$file"
 
@@ -273,19 +215,21 @@ application/gimp:xcf:Gimp Image
 application/photoshop:psd:PhotoShop Image
 application/x-photoshop:psd:PhotoShop Image
 	exits: display -window $window -backdrop "$file"
-	repeat swallow(display) fill: display "$file"
 
 application/pdf:pdf:PDF file
 application/x-pdf:pdf:PDF file
 text/pdf:pdf:PDF file
 text/x-pdf:pdf:PDF file
-	ACROREAD()
+#        repeat swallow(acroread) fill : acroread -openInNewWindow /a "$fragment" "$file"
 	repeat noisy swallow(kpdf) fill: kpdf "$file"
 	repeat noisy swallow(Xpdf) fill: xpdf -g +9000+9000 "$file"
-	repeat noisy swallow(okular) fill: okular "$file"
         repeat noisy swallow(epdfview) fill: epdfview "$file"
 	GV()
-	repeat noisy fill exits: evince "$file"
+	links noisy : okular "$file"
+	links noisy exits: evince "$file"
+        links exits: acroread /a "$fragment" "$file"
+# We don't swallow evince, acroread or okular as those apps done play ball when swallowed
+# http://www.mozdev.org/bugs/show_bug.cgi?id=20686, 24322,
 
 application/x-dvi:dvi:DVI file
         repeat swallow(kdvi) fill: kdvi "$file"
@@ -357,4 +301,73 @@ model/x-pdb:pdb: Protein Data Bank file
 
 application/bge:blend:Blender Game Engine
         swallow(%f): blenderplayer $file
+
+# Quick time, some webpages use Javascript to check plugin name
+[[QuickTime Plug-in 7.6.9 @7.6.9]]
+
+application/x-quicktimeplayer:mov:Quicktime animation
+image/x-macpaint:pntg,mov:Quicktime animation
+video/quicktime:mov,qt:Quicktime animation
+video/x-quicktime:mov,qt:Quicktime animation
+	MP_VIDEO_STREAM()
+        MP_LINKS("$file")
+	TM_VIDEO_STREAM()
+        TM_LINKS("$file")
+	stream links : xine -pq "$file"
+	nokill noisy: xine -pq "$file"
+
+# Real player, some webpages use Javascript to check plugin name
+[[RealPlayer 9 @9]]
+
+audio/x-pn-realaudio-plugin:rpm:RealPlayer Plugin Metafile
+audio/x-pn-realaudio:ra,rm,ram:Realaudio-plugin resource locator
+audio/x-realaudio:ra,rm,ram:RealAudio file
+application/vnd.rn-realmedia:rm:RealMedia file
+application/smil:smi:RealPlayer
+audio/vnd.rn-realaudio:ra,ram:RealAudio file
+audio/vnd.rn-realvideo:rv:RealVideo file
+	nokill stream: hxplay "$file"
+        nokill stream: realplay "$file"
+
+[[Windows Media Player Plug-in @10.1]]
+
+application/x-mplayer2:*:Windows Media video
+video/x-ms-asf:asf,asx:Windows Media video
+video/x-ms-wm:wm:Windows Media video
+video/x-ms-wmv:wmv:Windows Media video
+video/x-ms-wvx:wvx:Windows Media video
+video/x-ms-asf-plugin:*:Window Media video
+        MP_VIDEO_PLAYLIST(%.asx)
+	MP_VIDEO_STREAM()
+	TM_VIDEO_STREAM()
+
+application/asx:asx:Windows Media video
+	MP_VIDEO_STREAM(-playlist)
+	TM_VIDEO_STREAM()
+
+audio/wav:wav:Microsoft wave file
+audio/x-wav:wav:Microsoft wave file
+audio/x-pn-wav:wav:Microsoft wave file
+audio/x-pn-windows-acm:wav:Microsoft wave file
+        controls: play "$file"
+	controls: wavplay -q "$file"
+	controls noisy: bplay "$file"
+	controls: splay "$file"
+	nokill noisy : xmms -e -p "$file"
+ 	repeat noisy swallow(alsaplayer): alsaplayer -q "$file"
+
+audio/x-ms-wax:wax:Windows Media Audio
+	MP_AUDIO_STREAM(-playlist-playlist))
+	TM_AUDIO_STREAM()
+
+audio/x-ms-wma:wma:Windows Media Audio
+	MP_AUDIO_STREAM()
+	TM_AUDIO_STREAM()
+
+
+#[[Shockwave Flash @11,2,202,332]]
+# 11.2 r202
+#application/x-shockwave-flash:swf:Shockwave Flash
+#application/futuresplash:spl:FutureSplash Player
+#	MP_AUDIO_STREAM()
 

@@ -17,19 +17,23 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
  */
 
-#ifndef _NPN_GET_HELPERS_H_
-#define _NPN_GET_HELPERS_H_
+#ifndef _PLUGIN_ENTRY_H_
+#define _PLUGIN_ENTRY_H_
 
-extern void get_api_version(void);
+/* forward references */
+struct NPNetscapeFuncs_s;
+struct NPPluginFuncs_s;
 
-extern NPBool does_browser_have_resize_bug(void);
+NP_EXPORT(NPError) NP2_Initialize(const char * magic,
+                                     const struct NPNetscapeFuncs_s * nsTable,
+                                          struct NPPluginFuncs_s * pluginFuncs);
 
-extern NPBool does_browser_support_xembed(void);
+NP_EXPORT(NPError) NP2_GetValue(const char * magic, NPPVariable variable, void *value);
 
-extern NPNToolkitType get_browser_toolkit(NPP instance);
+NP_EXPORT(const char *) NP2_GetMIMEDescription(const char * magic);
 
-extern NPBool does_browser_support_key_handling(NPP instance);
+NP_EXPORT(NPError) NP2_Shutdown(const char * magic);
 
-extern const char * NPPVariableToString(NPPVariable variable);
+NP_EXPORT(const char *) NP2_GetPluginVersion(const char * magic);
 
 #endif

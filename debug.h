@@ -1,12 +1,6 @@
-/*****************************************************************************
- *
- * Original author: Fredrik Hübinette <hubbe@hubbe.net>
- *
- * Current Authors: Louis Bavoil <bavoil@cs.utah.edu>
- *                  Peter Leese <hubbe@hubbe.net>
- *
- * This code is based on and is a branch of plugger written 
- * by Fredrik Hübinette <hubbe@hubbe.net>
+/**
+ * This file is part of mozplugger a fork of plugger, for list of developers
+ * see the README file.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,20 +14,19 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
- *
- *****************************************************************************/
-#ifndef _DEBUG_H_
-#define _DEBUG_H_
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
+ */
 
-
-/*****************************************************************************
- * Defines
- *****************************************************************************/
+#ifndef _MOZPLUGGER_DEBUG_H_
+#define _MOZPLUGGER_DEBUG_H_
 
 #define DEBUG_FILENAME "mozdebug"
+
 void close_debug(void);
+
 char * get_debug_path(void);
+
+int is_debugging(void);
 
 #ifdef __GNUC__
 void D(char *fmt, ...) __attribute__((format(printf,1,2)));

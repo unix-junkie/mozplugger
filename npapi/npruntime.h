@@ -37,7 +37,8 @@
 extern "C" {
 #endif
 
-#include "nptypes.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 /*
     This API is used to facilitate binding code written in C to script

@@ -1,42 +1,18 @@
-This is MozPlugger version 1.14.4
 Originally written by Fredrik Hübinette (c) 1997-2001
-Maintained by Louis Bavoil and Peter Leese (c) 2002-2012
+Maintained by Louis Bavoil and Peter Leese (c) 2002-2014
 Homepage : http://mozplugger.mozdev.org
 
 This software is distributed under the General Public License.
 Absolutely no warranties. Use this software on your own risk.
 See the file COPYING for more information.
 
-As of Feb 2011, the distrubtion includes configure.ac and Makefile.in.
-Eventually the standard GNU ./configure && make && make install 
-mechanism will supercede the previous Makefile.
+Use the standard GNU sequence of
+$ ./configure
+$ make
+$ make install
 
-For advantageous users (i.e. this will overwrite the Makefile) 
-to compile do the following:
+Use './configure --help' to view possible options
 
-1/ 'cp Makefile Makefile.old'
-2/ 'autoconf'
-3/ 'chmod +x configure'
-4/ './configure --help' to view possible options
-5/ './configure --prefix=/usr --sysconfdir=/etc' for same behaviour as before
-6/ 'make xx' as before...
-
-If this fails report bug and do the following
-1/ 'cp Makefile.old Makefile'
-
-
-
-To re-compile:
-	If necessary, edit Makefile to suit to your system.
-	Type 'make xx'. Where xx = the platform and/or type
-        of build you want.
-        e.g. 
-        1/ 'make linux' - builds for linux
-        2/ 'make linux BUILD=DEBUG' - builds debug version for linux
-        3/ 'make linux libprefix=/lib64' - builds and links against the
-                                         for 64bit libraries 
-
-        If you just type 'make' it should list the options available
 Notes:
         * You will need X-libs development pacakge installed so that
         the build can find the appropriate include files.
@@ -52,10 +28,6 @@ To install in your own directory: (for Opera)
 
 To install globally:
 	make install
-or:	
-	make install prefix=/usr/local
-or:
-	make install libprefix=/lib64
 
 By default, the plugin is installed in /usr/lib/mozilla/plugins/
 
@@ -72,6 +44,8 @@ in /usr/lib/firefox/plugins
 
 If you don't want to put mozpluggerrc in /etc/ you can put it in one of:
    $MOZPLUGGER_HOME/
+   $XDG_CONFIG_HOME/mozplugger/
+   $HOME/.config/mozplugger/
    $HOME/.mozplugger/
    $HOME/.netscape/
    $HOME/.mozilla/
@@ -84,6 +58,9 @@ If you don't want to put mozpluggerrc in /etc/ you can put it in one of:
    /usr/local/netscape/
 
 You might also want to customize your 'mozpluggerrc' file before installing it.
+
+You must run mozplugger-update after every change to mozpluggerrc or when you
+install / remove applications referenced in mozpluggerc
 
 In case of problem with this version, submit a bug report on
 http://mozplugger.mozdev.org describing your problem, your system and

@@ -1,5 +1,5 @@
 %define name mozplugger
-%define version 1.14.4
+%define version 2.1.6
 %define release 1
 
 Summary: A generic mozilla plug-in

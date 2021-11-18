@@ -37,27 +37,13 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/*
- * npunix.c
- *
- * Netscape Client Plugin API
- * - Wrapper function to interface with the Netscape Navigator
- *
- * dp Suresh <dp@netscape.com>
- * Peter Leese - modified for mozplugger
- *
- */
-#ifdef HAVE_CONFIG_H
-#include "config.h"         /* For VERSION */
-#endif
-
-#define XP_UNIX 1
-
 #include <stdio.h>
 #include <string.h>
 
 #include "npapi.h"
-#include "npupp.h"
+#include "npruntime.h"
+#include "npn_func_tab.h"
+#include "npn_funcs.h"
 
 /***********************************************************************
  *
@@ -65,7 +51,7 @@
  *
  ***********************************************************************/
 
-static NPNetscapeFuncs   gNetscapeFuncs;    /* Netscape Function table */
+static NPNetscapeFuncs gNetscapeFuncs; /* Netscape Function table */
 
 
 /***********************************************************************
@@ -78,12 +64,8 @@ static NPNetscapeFuncs   gNetscapeFuncs;    /* Netscape Function table */
  *
  ***********************************************************************/
 
-void NPN_Version(int* plugin_major, int* plugin_minor,
-            int* netscape_major, int* netscape_minor)
+void NPN_Version(int * netscape_major, int * netscape_minor)
 {
-    *plugin_major = NP_VERSION_MAJOR;
-    *plugin_minor = NP_VERSION_MINOR;
-
     /* Major version is in high byte */
     *netscape_major = gNetscapeFuncs.version >> 8;
     /* Minor version is in low byte */
@@ -127,7 +109,7 @@ NPError NPN_GetURL(NPP instance, const char* url, const char* window)
 }
 
 /******************************************************************************/
-NPError NPN_GetURLNotify(NPP instance, const char* url, const char* window, 
+NPError NPN_GetURLNotify(NPP instance, const char* url, const char* window,
                                                                void* notifyData)
 {
     NPError retVal = NPERR_INVALID_FUNCTABLE_ERROR;
@@ -153,7 +135,7 @@ NPError NPN_PostURL(NPP instance, const char* url, const char* window,
 }
 
 /******************************************************************************/
-NPError NPN_PostURLNotify(NPP instance, const char* url, const char* window, 
+NPError NPN_PostURLNotify(NPP instance, const char* url, const char* window,
                    uint32_t len, const char* buf, NPBool file, void* notifyData)
 {
     NPError retVal = NPERR_INVALID_FUNCTABLE_ERROR;
@@ -313,7 +295,7 @@ void NPN_ForceRedraw(NPP instance)
 /******************************************************************************/
 void NPN_PushPopupsEnabledState(NPP instance, NPBool enabled)
 {
-    NPN_PushPopupsEnabledStateProcPtr func 
+    NPN_PushPopupsEnabledStateProcPtr func
                                        = gNetscapeFuncs.pushpopupsenabledstate;
     if(func)
     {
@@ -324,7 +306,7 @@ void NPN_PushPopupsEnabledState(NPP instance, NPBool enabled)
 /******************************************************************************/
 void NPN_PopPopupsEnabledState(NPP instance)
 {
-    NPN_PopPopupsEnabledStateProcPtr func 
+    NPN_PopPopupsEnabledStateProcPtr func
                                          = gNetscapeFuncs.poppopupsenabledstate;
     if(func)
     {
@@ -558,7 +540,7 @@ void NPN_SetException(NPObject* obj, const NPUTF8 *message)
 }
 
 /******************************************************************************/
-bool NPN_Enumerate(NPP npp, NPObject *obj, NPIdentifier **identifier, 
+bool NPN_Enumerate(NPP npp, NPObject *obj, NPIdentifier **identifier,
                                                                 uint32_t *count)
 {
     NPN_EnumerateProcPtr func = gNetscapeFuncs.enumerate;
@@ -571,10 +553,10 @@ bool NPN_Enumerate(NPP npp, NPObject *obj, NPIdentifier **identifier,
 }
 
 /******************************************************************************/
-void NPN_PluginThreadAsyncCall(NPP instance, void (*func)(void *), 
+void NPN_PluginThreadAsyncCall(NPP instance, void (*func)(void *),
                                                                  void *userData)
 {
-    NPN_PluginThreadAsyncCallProcPtr func2 
+    NPN_PluginThreadAsyncCallProcPtr func2
                                          = gNetscapeFuncs.pluginthreadasynccall;
     if(func2)
     {
@@ -583,7 +565,7 @@ void NPN_PluginThreadAsyncCall(NPP instance, void (*func)(void *),
 }
 
 /******************************************************************************/
-bool NPN_Construct(NPP npp, NPObject* obj, const NPVariant *args, 
+bool NPN_Construct(NPP npp, NPObject* obj, const NPVariant *args,
                                            uint32_t argCount, NPVariant *result)
 {
     NPN_ConstructProcPtr func = gNetscapeFuncs.construct;
@@ -596,7 +578,7 @@ bool NPN_Construct(NPP npp, NPObject* obj, const NPVariant *args,
 }
 
 /******************************************************************************/
-NPError NPN_GetValueForURL(NPP npp, NPNURLVariable variable, const char *url, 
+NPError NPN_GetValueForURL(NPP npp, NPNURLVariable variable, const char *url,
                                                     char **value, uint32_t *len)
 {
     NPN_GetValueForURLPtr func = gNetscapeFuncs.getvalueforurl;
@@ -609,7 +591,7 @@ NPError NPN_GetValueForURL(NPP npp, NPNURLVariable variable, const char *url,
 }
 
 /******************************************************************************/
-NPError NPN_SetValueForURL(NPP npp, NPNURLVariable variable, const char *url, 
+NPError NPN_SetValueForURL(NPP npp, NPNURLVariable variable, const char *url,
                                                 const char *value, uint32_t len)
 {
     NPN_SetValueForURLPtr func = gNetscapeFuncs.setvalueforurl;
@@ -622,24 +604,24 @@ NPError NPN_SetValueForURL(NPP npp, NPNURLVariable variable, const char *url,
 }
 
 /******************************************************************************/
-NPError NPN_GetAuthenticationInfo(NPP npp, const char *protocol, 
-                                     const char *host, int32_t port, 
-                                     const char *scheme, const char *realm, 
-                                     char **username, uint32_t *ulen, 
+NPError NPN_GetAuthenticationInfo(NPP npp, const char *protocol,
+                                     const char *host, int32_t port,
+                                     const char *scheme, const char *realm,
+                                     char **username, uint32_t *ulen,
                                      char **password, uint32_t *plen)
 {
     NPN_GetAuthenticationInfoPtr func = gNetscapeFuncs.getauthenticationinfo;
     NPError retVal = NPERR_INVALID_FUNCTABLE_ERROR;
     if(func)
     {
-        retVal = (*func)(npp, protocol, host, port, scheme, realm, username, 
+        retVal = (*func)(npp, protocol, host, port, scheme, realm, username,
                                                           ulen, password, plen);
     }
     return retVal;
 }
 
 /******************************************************************************/
-uint32_t NPN_ScheduleTimer(NPP instance, uint32_t interval, NPBool repeat, 
+uint32_t NPN_ScheduleTimer(NPP instance, uint32_t interval, NPBool repeat,
                                    void (*timerFunc)(NPP npp, uint32_t timerID))
 {
     NPN_ScheduleTimerPtr func = gNetscapeFuncs.scheduletimer;
@@ -674,8 +656,8 @@ NPError NPN_PopUpContextMenu(NPP instance, NPMenu* menu)
 }
 
 /******************************************************************************/
-NPBool NPN_ConvertPoint(NPP instance, double sourceX, double sourceY, 
-                                   NPCoordinateSpace sourceSpace, double *destX, 
+NPBool NPN_ConvertPoint(NPP instance, double sourceX, double sourceY,
+                                   NPCoordinateSpace sourceSpace, double *destX,
                                      double *destY, NPCoordinateSpace destSpace)
 {
     NPN_ConvertPointPtr func = gNetscapeFuncs.convertpoint;
@@ -704,7 +686,7 @@ NPBool NPN_HandleEvent(NPP instance, void *event, NPBool handled)
 NPBool NPN_UnfocusInstance(NPP instance, NPFocusDirection direction)
 {
     NPN_UnfocusInstancePtr func = gNetscapeFuncs.unfocusinstance;
-    NPBool retVal = False;
+    NPBool retVal = false;
     if(func)
     {
         retVal = (*func)(instance, direction);
@@ -723,63 +705,8 @@ void NPN_URLRedirectResponse(NPP instance, void* notifyData, NPBool allow)
     }
 }
 
-/*********************************************************************** 
- *
- * These functions are located automagically by netscape.
- *
- ***********************************************************************/
-
-/*
- * NP_GetPluginVersion [optional]
- *  - The browser uses the return value to indicate to the user what version of
- *    this plugin is installed.
- */
-char * NP_GetPluginVersion(void)
-{
-    return VERSION;
-}
-
-
-/*
- * NP_GetMIMEDescription
- *  - Netscape needs to know about this symbol
- *  - Netscape uses the return value to identify when an object instance
- *    of this plugin should be created.
- */
-const char * NP_GetMIMEDescription(void)
-{
-    return NPP_GetMIMEDescription();
-}
-
-/*
- * NP_GetValue [optional]
- *  - Netscape needs to know about this symbol.
- *  - Interfaces with plugin to get values for predefined variables
- *    that the navigator needs.
- */
-NPError NP_GetValue(void* future, NPPVariable variable, void *value)
-{
-    return NPP_GetValue(future, variable, value);
-}
-
-/*
- * NP_Initialize
- *  - Netscape needs to know about this symbol.
- *  - It calls this function after looking up its symbol before it
- *    is about to create the first ever object of this kind.
- *
- * PARAMETERS
- *    nsTable   - The netscape function table. If developers just use these
- *        wrappers, they don't need to worry about all these function
- *        tables.
- * RETURN
- *    pluginFuncs
- *      - This functions needs to fill the plugin function table
- *        pluginFuncs and return it. Netscape Navigator plugin
- *        library will use this function table to call the plugin.
- *
- */
-NPError NP_Initialize(NPNetscapeFuncs* nsTable, NPPluginFuncs* pluginFuncs)
+/******************************************************************************/
+NPError NPN_InitFuncTable(const NPNetscapeFuncs * nsTable)
 {
     NPError err = NPERR_NO_ERROR;
 
@@ -818,72 +745,5 @@ NPError NP_Initialize(NPNetscapeFuncs* nsTable, NPPluginFuncs* pluginFuncs)
     {
         err = NPERR_INVALID_FUNCTABLE_ERROR;
     }
-    
-    if (pluginFuncs != NULL) 
-    {
-        /* Create a temporary local copy */
-        NPPluginFuncs funcs;
-
-        /* Zero to start */
-        memset(&funcs, 0, sizeof(NPPluginFuncs));
-
-        /* First create a local copy of the table */
-        funcs.version    = (NP_VERSION_MAJOR << 8) + NP_VERSION_MINOR;
-        funcs.newp          = NPP_New;
-        funcs.destroy       = NPP_Destroy;
-        funcs.setwindow     = NPP_SetWindow;
-        funcs.newstream     = NPP_NewStream;
-        funcs.destroystream = NPP_DestroyStream;
-        funcs.asfile        = NPP_StreamAsFile;
-        funcs.writeready    = NPP_WriteReady;
-        funcs.write         = NPP_Write;
-        funcs.print         = NPP_Print;
-        funcs.urlnotify     = NPP_URLNotify;
-        funcs.getvalue      = (NPP_GetValueProcPtr) NPP_GetValue;
-        funcs.setvalue      = NPP_SetValue;
-        funcs.gotfocus      = NPP_GotFocus;
-        funcs.lostfocus     = NPP_LostFocus;
-        funcs.urlredirectnotify = NPP_URLRedirectNotify;
-        funcs.clearsitedata = NPP_ClearSiteData;
-        funcs.getsiteswithdata = NPP_GetSitesWithData;
-
-        if(pluginFuncs->size > sizeof(NPPluginFuncs))
-        {   
-            /* Zero the fields we dont have anything for */
-            memset(&pluginFuncs[sizeof(NPPluginFuncs)], 0, 
-                                     pluginFuncs->size - sizeof(NPPluginFuncs));
-            funcs.size = sizeof(NPPluginFuncs);
-        }
-        else
-        {
-            funcs.size = pluginFuncs->size;
-        }
-
-        /* Copy across */
-        memcpy(pluginFuncs, &funcs, funcs.size);
-    }
-    else
-    {
-        err = NPERR_INVALID_FUNCTABLE_ERROR;
-    }
-
-    if(err == NPERR_NO_ERROR)
-    {
-        err = NPP_Initialize();
-    }
-    
     return err;
-}
-
-/*
- * NP_Shutdown [optional]
- *  - Netscape needs to know about this symbol.
- *  - It calls this function after looking up its symbol after
- *    the last object of this kind has been destroyed.
- *
- */
-NPError NP_Shutdown(void)
-{
-    NPP_Shutdown();
-    return NPERR_NO_ERROR;
 }

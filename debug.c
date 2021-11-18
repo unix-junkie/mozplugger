@@ -1,12 +1,6 @@
-/*****************************************************************************
- *
- * Original Author:  Fredrik Hübinette <hubbe@hubbe.net>
- *
- * Current Authors: Louis Bavoil <bavoil@cs.utah.edu>
- *                  Peter Leese <hubbe@hubbe.net>
- *
- * This code is based on and is a branch of plugger written 
- * by Fredrik Hübinette <hubbe@hubbe.net>
+/**
+ * This file is part of mozplugger a fork of plugger, for list of developers
+ * see the README file.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
- *
- *****************************************************************************/
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -40,13 +34,11 @@ static int    debug_on = 1;
 static FILE * debug_output = NULL;
 static char * debug_path = "";
 
-/*******************************************************************************/
 /**
  * Open the debug file for appending to
  *
  * @return The FILE pointer, or NULL if problem
- *
- ******************************************************************************/
+ */
 static FILE *getout(void)
 {
      char debug_filename[128];
@@ -92,7 +84,7 @@ static FILE *getout(void)
           snprintf(debug_filename, sizeof(debug_filename),
                                                "%s/%s", tmpdir, DEBUG_FILENAME);
      }
-     
+
      debug_output = fopen(debug_filename,"a+");
      if (debug_output == NULL)
      {
@@ -109,13 +101,9 @@ static FILE *getout(void)
      return debug_output;
 }
 
-/*******************************************************************************/
 /**
  * Close debug file
- *
- * Close the debug file
- *
- ******************************************************************************/
+ */
 void close_debug(void)
 {
      FILE * f = getout();
@@ -127,15 +115,13 @@ void close_debug(void)
      debug_output = NULL;
 }
 
-/*******************************************************************************/
 /**
  * Take the standard printf type arguments and write the output to the debug
  * file
  *
  * @param[in] fmt The printf format args
  * @param[in] ... The printf style arguments
- *
- ******************************************************************************/
+ */
 void D(char *fmt, ...)
 {
      char buffer[9999];
@@ -153,13 +139,11 @@ void D(char *fmt, ...)
      }
 }
 
-/*******************************************************************************/
 /**
  * Get path to the debug file (for display purposes only!)
  *
  * @return String containing debug path name
- *
- ******************************************************************************/
+ */
 char * get_debug_path(void)
 {
      if(debug_path[0] == '\0')
@@ -170,20 +154,29 @@ char * get_debug_path(void)
      return debug_path;
 }
 
+int is_debugging(void)
+{
+     return 1;
+}
+
 #else
 
-void D(char *fmt, ...) 
+void D(char *fmt, ...)
 {
 }
 
-void close_debug(void) 
+void close_debug(void)
 {
 }
 
-char * get_debug_path(void) 
+char * get_debug_path(void)
 {
-    return NULL;
+     return NULL;
 };
 
+int is_debugging(void)
+{
+     return 0;
+}
 #endif
 

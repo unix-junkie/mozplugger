@@ -1,9 +1,27 @@
-#                                               -*- Autoconf -*-
+#
+# This file is part of mozplugger a fork of plugger, for list of developers
+# see the README file.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+#
+
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.68])
-AC_INIT([mozplugger], [1.14.5])
-#AC_INIT([mozplugger], [CVS-2012-Feb-26])
+AC_PREREQ([2.69])
+AC_INIT([mozplugger], [2.1.6])
+#AC_INIT([mozplugger], [CVS-2013-Feb-18])
 AC_CONFIG_SRCDIR([child.c])
 AC_CONFIG_HEADERS([config.h])
 
@@ -11,41 +29,48 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_CC
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-#AC_PROG_MKDIR_P
-
 
 # Determine the linker flags for mozplugger.so
-LDSHARED='gcc -shared'
+LDSHARED='-shared -Wl,--version-script=exportmap'
 PLATFORM="x`uname`"
-XCFLAGS="-fPIC -Wall -O2"
+XCFLAGS="-fPIC -Wall -O2 -Wdeclaration-after-statement"
+BIN2O="ld -r -b binary"
+MOZPLUGGER_SO_BLOB="mozplugger_so_blob.o"
 
 if test "${PLATFORM}" = xIRIX; then
     XCFLAGS="-fPIC -O2"
-    LDSHARED='ld -shared -n32'
+    LDSHARED='-shared -n32'
+    MOZPLUGGER_SO_BLOB=""
 fi
 if test "${PLATFORM}" = xAIX; then
     XCFLAGS="-fPIC -O2"
-    LDSHARED='ld -G -bexpall'
+    LDSHARED='-G -bexpall'
+    MOZPLUGGER_SO_BLOB=""
 fi
 if test "${PLATFORM}${CC}" = "xHP-UXgcc"; then
     XCFLAGS="-fPIC -O2"
-    LDSHARED='ld -b'
+    LDSHARED='-b'
+    MOZPLUGGER_SO_BLOB=""
 fi
 if test "${PLATFORM}${CC}" = "xHP-UXcc"; then
     XCFLAGS='+DAportable -Ae +z +02'
-    LDSHARED='ld -b +e NP_GetValue +e NP_Initialize +e NP_Shutdown +e NP_GetMIMEDescription' 
+    LDSHARED='-b +e NP_GetValue +e NP_Initialize +e NP_Shutdown +e NP_GetMIMEDescription'
+    MOZPLUGGER_SO_BLOB=""
 fi
 if test "${PLATFORM}${CC}" = "xSunOSgcc"; then
     XCFLAGS="-fPIC -O2"
-    LDSHARED='ld -G'
+    LDSHARED='-G'
+    MOZPLUGGER_SO_BLOB=""
 fi
 if test "${PLATFORM}${CC}" = "xSunOScc"; then
     XCFLAGS='-Kpic -O'
-    LDSHARED='ln -G' 
+    LDSHARED='-G'
+    MOZPLUGGER_SO_BLOB=""
 fi
 if test "${PLATFORM}" = "xOSF1"; then
-    XCFLAGS='-shared' 
-    LDSHARED='ld -expect_unresolved "*" -shared -msym -O3'
+    XCFLAGS='-shared'
+    LDSHARED='-expect_unresolved "*" -shared -msym -O3'
+    MOZPLUGGER_SO_BLOB=""
 fi
 #freebsd-aout:
 #	${MAKE} all XCFLAGS='-fPIC -aout' XLDFLAGS='-shared -aout'
@@ -66,27 +91,35 @@ fi
 PLUGINDIRS=
 if test "$libdir" = '${exec_prefix}/lib64'; then
     PLUGINLIB=lib64
-else 
+else
     PLUGINLIB=lib
 fi
+
+AC_ARG_VAR(PLUGINDIR,AS_HELP_STRING([The path where the plugin is to be installed]))
+AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIRS} ${PLUGINDIR}"])
 
 #/usr/lib/mozilla/plugins/
 #/usr/lib/netscape/plugins
 #/usr/lib/firefox/plugins
 #$MOZILLA_HOME/plugins
 #/usr/lib/chromium/plugins
+#/usr/local/lib/browser_plugins
 
 PLUGINDIR=${MOZ_PLUGIN_PATH}
-AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIR} ${PLUGINDIRS}"])
+AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIRS} ${PLUGINDIR}"])
 
 PLUGINDIR=/usr/${PLUGINLIB}/mozilla/plugins
-AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIR} ${PLUGINDIRS}"])
+AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIRS} ${PLUGINDIR}"])
 
 PLUGINDIR=/usr/${PLUGINLIB}/firefox/plugins
-AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIR} ${PLUGINDIRS}"])
+AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIRS} ${PLUGINDIR}"])
+
+PLUGINDIR=/usr/local/lib/browser_plugins
+AC_CHECK_FILE([${PLUGINDIR}], [PLUGINDIRS="${PLUGINDIRS} ${PLUGINDIR}"])
 
 # Checks for libraries.
 AC_CHECK_LIB([X11], [XDisplayName])
+
 
 # Check to see if gcov required...
 AC_ARG_ENABLE(gcov,
@@ -99,7 +132,7 @@ AC_ARG_ENABLE(gcov,
                esac],
               [gcov=false])
 if test "x$gcov" = xtrue; then
-    AC_CHECK_LIB([gcov], [main])
+    AC_CHECK_LIB([gcov], [main],[LDFLAGS="${LDFLAGS} -lgcov"])
     XCFLAGS="-g -fprofile-arcs -ftest-coverage -fstack-protector-all -Wall"
     AC_DEFINE([GCOV])
 fi
@@ -136,7 +169,7 @@ fi
 
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h inttypes.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([fcntl.h inttypes.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h utime.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -147,8 +180,9 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
+AC_TYPE_UINT8_T
 
-# Check to see if -lsocket and -lnsl is required (solaris) 
+# Check to see if -lsocket and -lnsl is required (solaris)
 AC_SEARCH_LIBS([gethostbyname], [nsl])
 AC_SEARCH_LIBS([socket], [socket], [],
                [AC_CHECK_LIB([socket], [socket],
@@ -159,7 +193,8 @@ AC_SEARCH_LIBS([socket], [socket], [],
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([alarm dup2 gethostname memset mkdir putenv rmdir select strcasecmp strchr strcspn strncasecmp strrchr strstr])
+AC_FUNC_REALLOC
+AC_CHECK_FUNCS([alarm dup2 gethostname memmove memset mkdir putenv rmdir select strcasecmp strchr strcspn strncasecmp strrchr strstr strdup strtol getpwuid])
 
 AC_CONFIG_FILES([Makefile])
 
@@ -167,8 +202,12 @@ AC_SUBST([XCFLAGS])
 AC_SUBST([XCPPFLAGS])
 AC_SUBST([LDSHARED])
 AC_SUBST([PLUGINDIRS])
+AC_SUBST([BIN2O])
+AC_SUBST([MOZPLUGGER_SO_BLOB])
 
-AC_DEFINE([XP_UNIX])
 AC_DEFINE_UNQUOTED([VERSION], ["${PACKAGE_VERSION}"])
-
+AC_DEFINE_UNQUOTED([GLOBAL_PLUGIN_DIRS], ["${PLUGINDIRS}"])
+if test "x${MOZPLUGGER_SO_BLOB}" != x; then
+    AC_DEFINE([READ_FROM_INT_BLOB])
+fi
 AC_OUTPUT

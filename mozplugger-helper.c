@@ -1,12 +1,6 @@
-/*****************************************************************************
- *
- * Original Author:  Fredrik Hübinette <hubbe@hubbe.net>
- *
- * Current Authors: Louis Bavoil <bavoil@cs.utah.edu>
- *                  Peter Leese <peter@leese.net>
- *
- * This code is based on and is a branch of plugger written 
- * by Fredrik Hübinette <hubbe@hubbe.net>
+/**
+ * This file is part of mozplugger a fork of plugger, for list of developers
+ * see the README file.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +14,9 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
- *
- *****************************************************************************/
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111, USA.
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -35,7 +29,6 @@
 #include <stdio.h>
 #include <sysexits.h>
 #include <signal.h>
-#include <npapi.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <errno.h>
@@ -44,69 +37,89 @@
 #include <X11/Xatom.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <stdbool.h>
 
-#include "mozplugger.h"
+#include "npapi.h"
+#include "cmd_flags.h"
 #include "child.h"
 #include "debug.h"
+#include "pipe_msg.h"
 
-/*****************************************************************************
- * Type declarations
- *****************************************************************************/
-static struct
+/**
+ * Control use of semaphore in mozplugger-helper, define if one wants
+ * semaphores (rare cases doesnt work)
+ */
+
+#define USE_MUTEX_LOCK
+
+struct VictimDetails_s
 {
-     int    noWmRunning;
-     int    mapped;
-     int    reparented;
-     int    reparentedAttemptCount;
+     int noWmRunning;
+     int mapped;
+     int reparented;
+     int reparentedAttemptCount;
      Window window;
-     int    borderWidth;
-     int    x;
-     int    y;
-     int    width;
-     int    height;
-     pid_t  pid;
-} victimDetails;
+     int borderWidth;
+     int x;
+     int y;
+     int idealWidth; /* The width the victim wants to be if unconstrained */
+     int idealHeight; /* The height the victim wants to be if unconstrained */
+     int currentWidth;
+     int currentHeight;
+};
 
-static struct 
+typedef struct VictimDetails_s VictimDetails_t;
+
+struct ParentDetails_s
 {
-     Window  window;
-     int     width;
-     int     height;
-} parentDetails;
+     Window window;
+     int width;
+     int height;
+};
 
+typedef struct ParentDetails_s ParentDetails_t;
 
-/*****************************************************************************
+struct SwallowMutex_s
+{
+    Atom xObj;
+    int taken;
+    Window win;
+    Display * dpy;
+};
+
+typedef struct SwallowMutex_s SwallowMutex_t;
+
+struct SigGlobals_s
+{
+    Display * dpy;
+#ifdef USE_MUTEX_LOCK
+    SwallowMutex_t * mutex;
+#endif
+    pid_t childPid;
+};
+
+typedef struct SigGlobals_s SigGlobals_t;
+
+/**
  * Global variables
- *****************************************************************************/
-static Display * display = 0;
+ */
+
+static SigGlobals_t sig_globals;
+static VictimDetails_t victimDetails;
+static ParentDetails_t parentDetails;
 static int pipe_fd;
 static int flags;
-static int repeats;
-static char *winname;
-static char *command;
-static char *file;
+static char * winname;
+static char * file;
 
 static XWindowAttributes wattr;
-
-#ifdef USE_MUTEX_LOCK
-static Atom swallowMutex;
-static int  swallowMutexTaken;
-#endif
-
-static Atom windowOwnerMark;
-
-static int xaspect;
-static int yaspect;
 
 #define MAX_POSS_VICTIMS 100
 static unsigned int possible_victim_count = 0;
 static Window possible_victim_windows[MAX_POSS_VICTIMS];
 
 
-/*****************************************************************************/
 /**
- * @brief Error handler callback
- *
  * Callback from X when there is an error. If debug defined error message is
  * printed to debug log, otherise nothing is done
  *
@@ -114,8 +127,7 @@ static Window possible_victim_windows[MAX_POSS_VICTIMS];
  * @param[in] err Pointer to the error event data
  *
  * @return Always returns zero
- *
- *****************************************************************************/
+ */
 static int error_handler(Display *dpy, XErrorEvent *err)
 {
      char buffer[1024];
@@ -125,60 +137,68 @@ static int error_handler(Display *dpy, XErrorEvent *err)
 }
 
 #ifdef USE_MUTEX_LOCK
-/*****************************************************************************/
 /**
  * Initialise semaphore (swallow mutex semaphore protection)
  *
- * @return none
+ * @param[in] dpy The display
+ * @param[in] win The window
+ * @param[out] mutex The Mutex initialised
  *
- *****************************************************************************/
-static void initSwallowMutex(void)
+ * @return none
+ */
+static void initSwallowMutex(Display * dpy, Window win, SwallowMutex_t * mutex)
 {
-     D("Initialising Swallow Mutex\n"); 
-     if(display == 0) 
+     D("Initialising Swallow Mutex\n");
+     if(dpy == 0)
      {
 	  fprintf(stderr, "Display not set so cannot initialise semaphore!\n");
+          mutex->dpy = NULL;
      }
      else
      {
-          swallowMutex = XInternAtom(display, "MOZPLUGGER_SWALLOW_MUTEX", 0);
-          swallowMutexTaken = 0;
+          mutex->dpy = dpy;
+          mutex->win = win;
+          mutex->xObj = XInternAtom(dpy, "MOZPLUGGER_SWALLOW_MUTEX", 0);
+          mutex->taken = 0;
      }
 }
 #endif
 
-/*****************************************************************************/
 /**
  * Initialise the X atom used to mark windows as owned by mozplugger
  *
- * @return None
+ * @param[in] dpy The display pointer
  *
- *****************************************************************************/
-static void initWindowOwnerMarker(void)
+ * @return None
+ */
+static Atom getWindowOwnerMarker(Display * dpy)
 {
-     windowOwnerMark = XInternAtom(display, "MOZPLUGGER_OWNER", 0);
+     static Atom mark = 0;
+     if(mark == 0)
+     {
+          mark = XInternAtom(dpy, "MOZPLUGGER_OWNER", 0);
+     }
+     return mark;
 }
 
-/*****************************************************************************/
 /**
  * Get Host ID - construct a host ID using host name as source of information
  *
  * @return The host ID
- *
- *****************************************************************************/
+ */
 static uint32_t getHostId(void)
 {
      char hostName[128];
      uint32_t id;
      int i;
-   
+
      memset(hostName, 0, sizeof(hostName));
      gethostname(hostName, sizeof(hostName)-1);
 
      D("Host Name = \"%s\"\n", hostName);
 
      /* OK, Create a 32 bit hash value from the host name....
-       use this as a host ID, the possiblity of a collison of hash keys 
+       use this as a host ID, the possiblity of a collison of hash keys
        effecting the swallow of victims is so infinitimisally small! */
 
      id = 0;
@@ -189,34 +209,33 @@ static uint32_t getHostId(void)
      return id;
 }
 
-/*****************************************************************************/
 /**
  * Extract host Id and pid from window property. This is common code used in
- * various places and is factored out due to complexity of 64 bit versus 
+ * various places and is factored out due to complexity of 64 bit versus
  * 32 bit machines.
  *
- * @param[in]  w      The window to get property from
- * @param[in]  name   The name of property to get 
+ * @param[in] dpy The display pointer
+ * @param[in] w The window to get property from
+ * @param[in] name The name of property to get
  * @param[out] hostId The ID of the host currently owning the mutex
- * @param[out] pid    The process ID of the mutex
+ * @param[out] pid The process ID of the mutex
  *
  * @return 1(true) if owner found, 0 otherwise
- *
- *****************************************************************************/
-static int getOwnerFromProperty(Window w, Atom name, uint32_t * hostId, uint32_t * pid)
+ */
+static int getOwnerFromProperty(Display * dpy, Window w, Atom name, uint32_t * hostId, uint32_t * pid)
 {
      unsigned long nitems;
-     unsigned long bytes;      
+     unsigned long bytes;
      int fmt;
      Atom type;
      unsigned char * property = NULL;
      int success = 0;
 
-     /* Get hold of the Host & PID that current holds the semaphore for 
+     /* Get hold of the Host & PID that current holds the semaphore for
        this display! - watch out for the bizarre 64-bit platform behaviour
-       where property returned is actually an array of 2 x  64bit ints with
+       where property returned is actually an array of 2 x 64bit ints with
        the top 32bits set to zero! */
-     XGetWindowProperty(display, w, name,
+     XGetWindowProperty(dpy, w, name,
                        0, 2, 0, XA_INTEGER,
                        &type, &fmt, &nitems, &bytes,
                        &property);
@@ -228,8 +247,8 @@ static int getOwnerFromProperty(Window w, Atom name, uint32_t * hostId, uint32_t
           /* Just check all is correct! */
 	  if((type != XA_INTEGER) || (fmt!=32) || (nitems!=2))
           {
-	       fprintf(stderr, "XGetWindowProperty returned bad values " 
-                            "%ld,%d,%lu,%lu\n", (long) type, fmt, nitems, 
+	       fprintf(stderr, "XGetWindowProperty returned bad values "
+                            "%ld,%d,%lu,%lu\n", (long) type, fmt, nitems,
                             bytes);
           }
 	  else
@@ -248,50 +267,50 @@ static int getOwnerFromProperty(Window w, Atom name, uint32_t * hostId, uint32_t
 }
 
 #ifdef USE_MUTEX_LOCK
-/*****************************************************************************/
 /**
  * Get owner of mutex semaphore.  Returns the current owner of the semaphore
  *
+ * @param[in] mutex The Swallow mutex structure
  * @param[out] hostId The ID of the host currently owning the mutex
- * @param[out] pid    The process ID of the mutex
+ * @param[out] pid The process ID of the mutex
  *
  * @return 1(true) if owner found, 0 otherwise
- *
- *****************************************************************************/
-static int getSwallowMutexOwner(uint32_t * hostId, uint32_t * pid)
-{   
-     return getOwnerFromProperty(wattr.root, swallowMutex, hostId, pid);
+ */
+static int getSwallowMutexOwner(const SwallowMutex_t * mutex,
+                                             uint32_t * hostId, uint32_t * pid)
+{
+     return getOwnerFromProperty(mutex->dpy, mutex->win, mutex->xObj, hostId, pid);
 }
 
-/*****************************************************************************/
 /**
  * Set owner of mutex semaphore
  *
+ * @param[in,out] mutex The swallow mutex structure
  * @param[in] hostId The ID of the new owner of the mutex
- * @param[in] pid    The process ID of the mutex
+ * @param[in] pid The process ID of the mutex
  *
  * @return none
- *
- *****************************************************************************/
-static void setSwallowMutexOwner(uint32_t hostId, uint32_t pid)
+ */
+static void setSwallowMutexOwner(SwallowMutex_t * mutex,
+                                                 uint32_t hostId, uint32_t pid)
 {
      unsigned long temp[2] = {hostId, pid};
 
-     D("Setting swallow mutex owner, hostId = 0x%08X, pid=%u\n", 
-                                            (unsigned) hostId, (unsigned) pid); 
-     XChangeProperty(display, wattr.root, swallowMutex,
+     D("Setting swallow mutex owner, hostId = 0x%08X, pid=%u\n",
+                                            (unsigned) hostId, (unsigned) pid);
+     XChangeProperty(mutex->dpy, mutex->win, mutex->xObj,
                         XA_INTEGER, 32, PropModeAppend,
                         (unsigned char*) (&temp), 2);
 }
 
-/*****************************************************************************/
 /**
  * Take mutex semaphore ownership.
  *
- * @return none
+ * @param[in,out] mutex The swallow mutex structure
  *
- *****************************************************************************/
-static void takeSwallowMutex(void)
+ * @return none
+ */
+static void takeSwallowMutex(SwallowMutex_t * mutex)
 {
      int countDown;
      const uint32_t ourPid = (uint32_t)getpid();
@@ -299,14 +318,14 @@ static void takeSwallowMutex(void)
      uint32_t otherPid;
      uint32_t otherHostId;
      uint32_t prevOtherPid = 0;
- 
-     if((display == 0) || (swallowMutex == 0))
+
+     if(!mutex || (mutex->dpy == 0))
      {
 	  return;
      }
 
-     D("Attempting to take Swallow Mutex\n"); 
-     /* Try up tp forty times ( 40 * 250ms = 10 seconds) to take 
+     D("Attempting to take Swallow Mutex\n");
+     /* Try up tp forty times ( 40 * 250ms = 10 seconds) to take
        the semaphore... */
 
      countDown = 40;
@@ -314,17 +333,17 @@ static void takeSwallowMutex(void)
      {
 
           /* While someone owns the semaphore */
-          while(getSwallowMutexOwner(&otherHostId, &otherPid))
+          while(getSwallowMutexOwner(mutex, &otherHostId, &otherPid))
           {
-               if( otherHostId == ourHostId)    
+               if( otherHostId == ourHostId)
                {
-                    if(otherPid == ourPid)     
+                    if(otherPid == ourPid)
                     {
  	                /* Great we have either successfully taken the semaphore
                            OR (unlikely) we previously had the semaphore! Exit
                            the function...*/
-	                 swallowMutexTaken = 1;
-                         D("Taken Swallow Mutex\n"); 
+	                 mutex->taken = 1;
+                         D("Taken Swallow Mutex\n");
 		         return;
                     }
 
@@ -335,8 +354,8 @@ static void takeSwallowMutex(void)
             	    if( (getsid(otherPid) < 0 ) && (errno == ESRCH))
 	            {
 	    	         D("Strange other Pid(%lu) cannot be found\n",(unsigned long) otherPid);
-                         XDeleteProperty(display, wattr.root, swallowMutex);
-                         break;    /* OK force early exit of inner while loop */
+                         XDeleteProperty(mutex->dpy, mutex->win, mutex->xObj);
+                         break; /* OK force early exit of inner while loop */
                     }
 	       }
 
@@ -344,96 +363,95 @@ static void takeSwallowMutex(void)
                 has restart timer */
                if(prevOtherPid != otherPid)
                {
-   	            D("Looks like semaphore's owner has changed pid=%ld\n", 
+   	            D("Looks like semaphore's owner has changed pid=%ld\n",
                         (long) otherPid);
 	            countDown = 40;
                     prevOtherPid = otherPid;
                }
-            
+
                /* Do one step of the timer... */
 	       countDown--;
                if(countDown <= 0)
                {
 	    	    D("Waited long enough for Pid(%lu)\n", (unsigned long) otherPid);
-                    XDeleteProperty(display, wattr.root, swallowMutex);
+                    XDeleteProperty(mutex->dpy, mutex->win, mutex->xObj);
 		    break;
                }
-	
-               usleep(250000);        /* 250ms */
+
+               usleep(250000); /* 250ms */
  	  }
 
           /* else no one has semaphore, timeout, or owner is dead -
-           Set us as the owner, but we need to check if we weren't 
+           Set us as the owner, but we need to check if we weren't
            beaten to it so once more around the loop.
            Note even doing the recheck does not work in 100% of all
            cases due to task switching occuring at just the wrong moment
            see Mozdev bug 20088 - the fix is done use the stillHaveMutex
            function */
 
-          setSwallowMutexOwner(ourHostId, ourPid);
+          setSwallowMutexOwner(mutex, ourHostId, ourPid);
      }
 }
 
-/*****************************************************************************/
 /**
  * Check if we still have the mutex semaphore
  *
- * @return true if we still have the Mutex semaphore
+ * @param[in,out] mutex The swallow mutex structure
  *
- *****************************************************************************/
-static int stillHaveMutex(void)
+ * @return true if we still have the Mutex semaphore
+ */
+static int stillHaveMutex(SwallowMutex_t * mutex)
 {
      uint32_t otherPid;
      uint32_t otherHostId;
 
-     if(getSwallowMutexOwner(&otherHostId, &otherPid))
+     if(getSwallowMutexOwner(mutex, &otherHostId, &otherPid))
      {
           const uint32_t ourHostId = getHostId();
-          if( otherHostId == ourHostId)    
+          if( otherHostId == ourHostId)
           {
                const uint32_t ourPid = (uint32_t)getpid();
-               if(otherPid == ourPid)     
+               if(otherPid == ourPid)
                {
                     return 1;
                }
           }
      }
-     D("Race condition detected, semaphore pinched by Pid(%lu)\n", 
+     D("Race condition detected, semaphore pinched by Pid(%lu)\n",
                                                       (unsigned long) otherPid);
      return 0;
 }
- 
-/*****************************************************************************/
+
 /**
  * Gives away ownership of the mutex semaphore
  *
- * @return none
+ * @param[in,out] mutex The swallow mutex structure
  *
- *****************************************************************************/
-static void giveSwallowMutex(void)
+ * @return none
+ */
+static void giveSwallowMutex(SwallowMutex_t * mutex)
 {
-     if((display == 0) || (swallowMutex == 0) || (swallowMutexTaken ==0))
+     if(!mutex || (mutex->dpy == 0))
      {
 	  return;
      }
-     D("Giving Swallow Mutex\n"); 
-     XDeleteProperty(display, wattr.root, swallowMutex);
-     swallowMutexTaken = 0;
+     D("Giving Swallow Mutex\n");
+     XDeleteProperty(mutex->dpy, mutex->win, mutex->xObj);
+     mutex->taken = 0;
 }
 #endif
 
-/*****************************************************************************/
 /**
  * Mark the victim window with a property that indicates that this instance
- * of mozplugger-helper has made a claim to this victim. This is used to 
+ * of mozplugger-helper has made a claim to this victim. This is used to
  * guard against two instances of mozplugger-helper claiming the same victim.
  *
+ * @param[in] dpy The display pointer
  * @param[in] w The window
  *
  * @return True(1) if taken, False(0) if not
- *
- *****************************************************************************/
-static int chkAndMarkVictimWindow(Window w)
+ */
+static int chkAndMarkVictimWindow(Display * dpy, Window w)
 {
      unsigned long temp[2];
      uint32_t ourPid;
@@ -443,11 +461,13 @@ static int chkAndMarkVictimWindow(Window w)
      uint32_t hostId;
      int gotIt = 0;
 
+     Atom windowOwnerMark = getWindowOwnerMarker(dpy);
+
      /* See if some other instance of Mozplugger has already 'marked' this
       * window */
-     if(getOwnerFromProperty(w, windowOwnerMark, &hostId, &pid))
+     if(getOwnerFromProperty(dpy, w, windowOwnerMark, &hostId, &pid))
      {
-          return 0;          /* Looks like someone else has marked this window */
+          return 0; /* Looks like someone else has marked this window */
      }
 
      /* OK lets claim it for ourselves... */
@@ -457,19 +477,19 @@ static int chkAndMarkVictimWindow(Window w)
      temp[0] = ourHostId;
      temp[1] = ourPid;
 
-     XChangeProperty(display, w, windowOwnerMark,
+     XChangeProperty(dpy, w, windowOwnerMark,
                      XA_INTEGER, 32, PropModeAppend,
                      (unsigned char*) (&temp), 2);
 
      /* See if we got it */
-     if(getOwnerFromProperty(w, windowOwnerMark, &hostId, &pid))
+     if(getOwnerFromProperty(dpy, w, windowOwnerMark, &hostId, &pid))
      {
           if( (pid == ourPid) && (hostId == ourHostId) )
           {
                gotIt = 1;
           }
      }
-     else         
+     else
      {
           D("Strange, couldn't set windowOwnerMark\n");
           gotIt = 1;
@@ -478,59 +498,35 @@ static int chkAndMarkVictimWindow(Window w)
      return gotIt;
 }
 
-/*****************************************************************************/
 /**
- * Calculate scaling factor. Given a and b calculate a number that both a 
- * and b can be divided by
+ * Calculate highest common factor
  *
- * @param[in] a  First value 
- * @param[in] b  Second value
+ * @param[in] a First value
+ * @param[in] b Second value
  *
  * @return Scaling factor
- *
- *****************************************************************************/
+ */
 static int gcd(int a, int b)
 {
-     if (a < b) 
+     if (a < b)
      {
           return gcd(b,a);
      }
-     if (b == 0) 
+     if (b == 0)
      {
           return a;
      }
      return gcd(b, a % b);
 }
 
-/*****************************************************************************/
-/**
- * Set aspect ratio. Store away the aspect ratio
- *
- * @param[in] x  X value 
- * @param[in] y  Y value
- *
- * @return 1(true) if change has occurred
- *
- *****************************************************************************/
-static int set_aspect(int x, int y)
-{
-     const int ox = xaspect;
-     const int oy = yaspect;
-     const int d = gcd(x, y);
-     xaspect = x / d;
-     yaspect = y / d;
-     D("xaspect=%d yaspect=%d\n", xaspect, yaspect);
-     return ((ox != xaspect) || (oy != yaspect));
-}
-
-/*****************************************************************************/
 /**
  * Adjust window size
  *
- * @return none
+ * @param[in] dpy The display pointer
  *
- *****************************************************************************/
-static void adjust_window_size(void)
+ * @return none
+ */
+static void adjust_window_size(Display * dpy)
 {
      int x = 0;
      int y = 0;
@@ -544,24 +540,28 @@ static void adjust_window_size(void)
      }
      else if (flags & H_MAXASPECT)
      {
+          const int d = gcd(victimDetails.idealWidth, victimDetails.idealHeight);
+          int xaspect = victimDetails.idealWidth / d;
+          int yaspect = victimDetails.idealHeight / d;
+
 	  if (xaspect && yaspect)
 	  {
                int tmpw, tmph;
 
-	       D("Resizing window 0x%x with MAXASPECT\n", 
+	       D("Resizing window 0x%x with MAXASPECT\n",
                                                (unsigned) victimDetails.window);
 	       tmph = h / yaspect;
 	       tmpw = w / xaspect;
-	       if (tmpw < tmph) 
+	       if (tmpw < tmph)
                {
                     tmph = tmpw;
                }
 	       tmpw = tmph * xaspect;
 	       tmph = tmph * yaspect;
-	       
+
 	       x = (w - tmpw) / 2;
 	       y = (h - tmph) / 2;
-	       
+
 	       w = tmpw;
 	       h = tmph;
 	  }
@@ -571,7 +571,7 @@ static void adjust_window_size(void)
 	       return;
 	  }
      }
-  
+
      /* Compensate for the Victims border width (usually set to zero anyway) */
      w -= 2 * victimDetails.borderWidth;
      h -= 2 * victimDetails.borderWidth;
@@ -579,17 +579,17 @@ static void adjust_window_size(void)
      D("New size: %dx%d+%d+%d\n", w, h, x, y);
 
      if((victimDetails.x == x) && (victimDetails.y == y)
-        && (victimDetails.width == w) && (victimDetails.height == h))
+        && (victimDetails.currentWidth == w) && (victimDetails.currentHeight == h))
      {
           XEvent event;
           D("No change in window size so sending ConfigureNotify instead\n");
-          /* According to X11 ICCCM specification, a compliant  window 
-           * manager, (or proxy in this case) should sent a  ConfigureNotify
+          /* According to X11 ICCCM specification, a compliant window
+           * manager, (or proxy in this case) should sent a ConfigureNotify
            * event to the client even if no size change has occurred!
            * The code below is taken and adapted from the
            * TWM window manager and fixed movdev bug #18298. */
           event.type = ConfigureNotify;
-          event.xconfigure.display = display;
+          event.xconfigure.display = dpy;
           event.xconfigure.event = victimDetails.window;
           event.xconfigure.window = victimDetails.window;
           event.xconfigure.x = x;
@@ -600,40 +600,42 @@ static void adjust_window_size(void)
           event.xconfigure.above = Above;
           event.xconfigure.override_redirect = False;
 
-          XSendEvent(display, victimDetails.window, False, StructureNotifyMask,
+          XSendEvent(dpy, victimDetails.window, False, StructureNotifyMask,
                   &event);
      }
 
      /* Always resize the window, even when the target size has not changed.
 	This is needed for gv. */
-     XMoveResizeWindow(display, victimDetails.window, 
+     XMoveResizeWindow(dpy, victimDetails.window,
 		       x, y, (unsigned)w, (unsigned)h);
      victimDetails.x = x;
      victimDetails.y = y;
-     victimDetails.width = w;
-     victimDetails.height = h;
+     victimDetails.currentWidth = w;
+     victimDetails.currentHeight = h;
 }
 
-/*****************************************************************************/
 /**
  * Change the leader of the window. Peter - not sure why this code is needed
  * as it does say in the ICCCM that only client applications should change
  * client HINTS. Also all the window_group does is hint to the window manager
  * that there is a group of windows that should be handled together.
  *
- * @return none
+ * @param[in] dpy The display pointer
+ * @param[in] win The window ID
+ * @param[in] newLeader The new window leader
  *
- *****************************************************************************/
-static void change_leader(void)
+ * @return none
+ */
+static void change_leader(Display * dpy, Window win, Window newLeader)
 {
-     D("Changing leader of window 0x%x\n", (unsigned) victimDetails.window);
-
      XWMHints *leader_change;
-     if ((leader_change = XGetWMHints(display, victimDetails.window)))
+     D("Changing leader of window 0x%x\n", (unsigned) win);
+
+     if ((leader_change = XGetWMHints(dpy, win)))
      {
           if((leader_change->flags & WindowGroupHint) != 0)
           {
-		D("Old window leader was 0x%x\n", 
+		D("Old window leader was 0x%x\n",
                                         (unsigned) leader_change->window_group);
           }
           if((leader_change->flags & InputHint) != 0)
@@ -642,16 +644,16 @@ static void change_leader(void)
           }
           if((leader_change->flags & StateHint) != 0)
           {
-		D("InitialState hint = %i\n", 
+		D("InitialState hint = %i\n",
                                        (unsigned) leader_change->initial_state);
           }
 
 	  leader_change->flags |= WindowGroupHint;
-	  leader_change->window_group = wattr.root;
+	  leader_change->window_group = newLeader;
 
 	  D("New window leader is 0x%x\n",
                                         (unsigned) leader_change->window_group);
-	  XSetWMHints(display,victimDetails.window,leader_change);
+	  XSetWMHints(dpy, win,leader_change);
 	  XFree(leader_change);
      }
      else
@@ -660,7 +662,6 @@ static void change_leader(void)
      }
 }
 
-/*****************************************************************************/
 /**
  * Reparent the window, a count is kept of the number of attempts. If this
  * exceeds 10, give up (i.e. avoid two instances of helper fighting over
@@ -669,17 +670,18 @@ static void change_leader(void)
  * such an unlikely occurance that two instances of helper will run at exactly
  * the same time and try to get the same window, that we give up.
  *
+ * @param[in] dpy The display pointer
+ *
  * @return none
- * 
- *****************************************************************************/
-static void reparent_window(void)
+ */
+static void reparent_window(Display * dpy)
 {
-     if (!victimDetails.window) 
+     if (!victimDetails.window)
      {
           D("reparent_window: No victim to reparent\n");
           return;
      }
-     if (!parentDetails.window) 
+     if (!parentDetails.window)
      {
           D("reparent_window: No parent to reparent to\n");
           return;
@@ -693,31 +695,29 @@ static void reparent_window(void)
 
      victimDetails.reparentedAttemptCount++;
 
-     
-     D("Reparenting window 0x%x into 0x%x\n", (unsigned)victimDetails.window, 
+
+     D("Reparenting window 0x%x into 0x%x\n", (unsigned)victimDetails.window,
                                                 (unsigned)parentDetails.window);
 
-     XReparentWindow(display, victimDetails.window, parentDetails.window, 0, 0);
+     XReparentWindow(dpy, victimDetails.window, parentDetails.window, 0, 0);
 }
 
-/******************************************************************************/
 /**
  * Traditionally strcmp returns -1, 0 and +1 depending if name comes before
  * or after windowname, this function also returns +1 if error
  *
  * @param[in] windowname The window name to compare against
- * @param[in] name       The name to compare against window name
+ * @param[in] name The name to compare against window name
  *
- * @return 0 if match, -1/+1 if different 
- *
- *****************************************************************************/
+ * @return 0 if match, -1/+1 if different
+ */
 static int my_strcmp(const char *windowname, const char *name)
 {
-     if (!name) 
+     if (!name)
      {
           return 1;
      }
-     if (!windowname) 
+     if (!windowname)
      {
           return 1;
      }
@@ -737,29 +737,28 @@ static int my_strcmp(const char *windowname, const char *name)
      }
 }
 
-/******************************************************************************/
 /**
  * Check name against the name of the passed window
  *
- * @param[in] w      The window to compare against
- * @param[in] name   The name to compare against window name
+ * @param[in] dpy The display pointer
+ * @param[in] w The window to compare against
+ * @param[in] name The name to compare against window name
  *
- * @return 1 if match, 0 if not 
- *
- *****************************************************************************/
-static char check_window_name(Window w, const char *name)
+ * @return 1 if match, 0 if not
+ */
+static char check_window_name(Display * dpy, Window w, const char *name)
 {
      char * windowname;
      XClassHint windowclass;
 
-     if (XFetchName(display, w, &windowname))
+     if (XFetchName(dpy, w, &windowname))
      {
 	  const char match = (my_strcmp(windowname, name) == 0);
 
           D("XFetchName, checking window NAME 0x%x (%s %s %s)\n",
                             (unsigned)w, windowname, match ? "==" : "!=", name);
 	  XFree(windowname);
-	  if (match) 
+	  if (match)
           {
 	       return 1;
 	  }
@@ -768,8 +767,8 @@ static char check_window_name(Window w, const char *name)
      {
           D("XFetchName, window has no NAME\n");
      }
-     
-     if (XGetClassHint(display, w, &windowclass))
+
+     if (XGetClassHint(dpy, w, &windowclass))
      {
 	  const char match = (my_strcmp(windowclass.res_name, name) == 0);
 
@@ -787,24 +786,23 @@ static char check_window_name(Window w, const char *name)
      return 0;
 }
 
-/*****************************************************************************/
 /**
  * Setup display ready for any reparenting of the application window. If the
  * WINDOW is NULL (can happen see mozdev bug #18837), then return failed
  * code from this function to indicate no window available. This then means
  * no swallowing will occur (even if requested).
  *
- * @return 1(true) if success, 0(false) if not
- *
- *****************************************************************************/
-static int setup_display(void)
+ * @return The display pointer or NULL
+ */
+static Display * setup_display(void)
 {
-     char *displayname;
+     Display * dpy = NULL;
+     char * displayname;
 
      if(parentDetails.window == 0)       /* mozdev bug #18837 */
      {
           D("setup_display() WINDOW is Null - so nothing setup\n");
-          return 0;
+          return NULL;
      }
 
      displayname = getenv("DISPLAY");
@@ -812,30 +810,28 @@ static int setup_display(void)
 
      XSetErrorHandler(error_handler);
 
-     display = XOpenDisplay(displayname);
-     if(display == 0)
+     dpy = XOpenDisplay(displayname);
+     if(dpy == 0)
      {
           D("setup_display() failed cannot open display!!\n");
 	  return 0;
      }
 
-     if (!XGetWindowAttributes(display, parentDetails.window, &wattr))
+     if (!XGetWindowAttributes(dpy, parentDetails.window, &wattr))
      {
           D("setup_display() failed cannot get window attributes!!\n");
-          XCloseDisplay(display);
-          display = 0;
-          return 0;
+          XCloseDisplay(dpy);
+          return NULL;
      }
-     D("display=0x%x\n", (unsigned) display);
+     D("display=0x%x\n", (unsigned) dpy);
      D("WINDOW =0x%x\n", (unsigned) parentDetails.window);
      D("rootwin=0x%x\n", (unsigned) wattr.root);
-     
+
      D("setup_display() done\n");
 
-     return 1;
+     return dpy;
 }
 
-/*****************************************************************************/
 /**
  * Add to list of possible victim windows. Called whenever we get a
  * CREATE_NOTIFY on the root window.
@@ -843,8 +839,7 @@ static int setup_display(void)
  * @param[in] window The window
  *
  * @return none
- *
- *****************************************************************************/
+ */
 static void add_possible_victim(Window window)
 {
      possible_victim_windows[possible_victim_count] = window;
@@ -854,30 +849,30 @@ static void add_possible_victim(Window window)
      }
 }
 
-/*****************************************************************************/
 /**
  * Checks if the passed window is the victim.
  *
- * @param[in] window The window
+ * @param[in] dpy The display pointer
+ * @param[in] window The window ID
+ * @param[in] mutex The Swallow mutex
  *
  * @return True if found our victim for first time.
- *
- *****************************************************************************/
-static int find_victim(Window window)
+ */
+static int find_victim(Display * dpy, Window window, SwallowMutex_t * mutex)
 {
      if (!victimDetails.window)
      {
+          int i;
           Window found = 0;
 
 	  D("Looking for victim... (%s)\n", winname);
 
           /* New way, check through list of newly created windows */
-          int i; 
 	  for(i = 0; i < possible_victim_count; i++)
           {
                if(window == possible_victim_windows[i])
 	       {
-                    if (check_window_name(window, winname))
+                    if (check_window_name(dpy, window, winname))
                     {
                          found = true;
                          break;
@@ -888,44 +883,43 @@ static int find_victim(Window window)
 	  if (found)
 	  {
 	       XWindowAttributes ca;
-	       if(XGetWindowAttributes(display, window, &ca))
+	       if(XGetWindowAttributes(dpy, window, &ca))
                {
-                    /* See if some instance of mozplugger got the window 
+                    /* See if some instance of mozplugger got the window
                      * before us, if not mark it as ours */
-                    if(chkAndMarkVictimWindow(window))
+                    if(chkAndMarkVictimWindow(dpy, window))
                     {
                          victimDetails.window = window;
                          victimDetails.borderWidth = ca.border_width;
                          victimDetails.x = ca.x;
                          victimDetails.y = ca.y;
-                         victimDetails.width = ca.width;
-                         victimDetails.height = ca.height;
+                         victimDetails.idealWidth = ca.width;
+                         victimDetails.idealHeight = ca.height;
+                         victimDetails.currentWidth = ca.width;
+                         victimDetails.currentHeight = ca.height;
 
       	                 D("Found victim=0x%x, x=%i, y=%i, width=%i, height=%i, "
                                                                   "border=%i\n",
-                                          (unsigned) victimDetails.window, 
+                                          (unsigned) victimDetails.window,
                                                      victimDetails.x,
                                                      victimDetails.y,
-                                                     victimDetails.width, 
-                                                     victimDetails.height,
+                                                     victimDetails.idealWidth,
+                                                     victimDetails.idealHeight,
                                                      victimDetails.borderWidth);
 
-                         /* To avoid losing events, enable monitoring events on 
+                         /* To avoid losing events, enable monitoring events on
                           * victim at earlist opportunity */
 
-                         XSelectInput(display, victimDetails.window, 
-                                                           StructureNotifyMask);
-                         XSync(display, False);
+                         XSelectInput(dpy, victimDetails.window,
+                                             StructureNotifyMask | FocusChangeMask
+                                           | EnterWindowMask | LeaveWindowMask);
+                         XSync(dpy, False);
 
-                         XSelectInput(display, wattr.root, 0);
+                         XSelectInput(dpy, wattr.root, 0);
 
 #ifdef USE_MUTEX_LOCK
-	                 giveSwallowMutex();
-#endif 	
-          	         if (flags & H_MAXASPECT)
-	                 {
-	        	      set_aspect(ca.width, ca.height);
-	                 }
+	                 giveSwallowMutex(mutex);
+#endif
                          return true;
                     }
                     else
@@ -935,8 +929,8 @@ static int find_victim(Window window)
                     }
                }
                else
-               {    
-                    D("XGetWindowAttributes failed for 0x%x\n", 
+               {
+                    D("XGetWindowAttributes failed for 0x%x\n",
                                                              (unsigned) window);
                }
 	  }
@@ -944,7 +938,6 @@ static int find_victim(Window window)
      return false;
 }
 
-/******************************************************************************/
 /**
  * handle X event for the root window. Mozplugger in effect is acting like a
  * window manager by intercepting root window events. The one event it would
@@ -957,7 +950,7 @@ static int find_victim(Window window)
  * current solution is to reparent that window again. Result is a fight with
  * window manager. The alternative is to set the override_redirect attribute
  * on the window (this stops the MapRequest event). But according to ICCCM this
- * is bad practice, so mozplugger only does it as a last resort (see 
+ * is bad practice, so mozplugger only does it as a last resort (see
  * reparent_window function above).
  *
  * An alternative would be to reparent the window before the MapRequest i.e.
@@ -965,19 +958,22 @@ static int find_victim(Window window)
  * root windows and it is difficult to know which window is the one to grab until
  * the application makes it clear by Mapping that window.
  *
+ * @param[in] dpy The display pointer
+ * @param[in] rootWin The window ID
  * @param[in] ev the event
+ * @param[in] mutex The swallow mutex
  *
  * @return none
- *
- *****************************************************************************/
-static void handle_rootWindow_event(const XEvent * const ev)
+ */
+static void handle_rootWindow_event(Display * dpy, Window rootWin, const XEvent * const ev,
+                                                        SwallowMutex_t * mutex)
 {
      switch (ev->type)
      {
      case CreateNotify:
           D("***CreateNotify for root, window=0x%x, "
-                                            "override_redirect=%i\n",  
-                                            (unsigned) ev->xcreatewindow.window, 
+                                            "override_redirect=%i\n",
+                                            (unsigned) ev->xcreatewindow.window,
                                            ev->xcreatewindow.override_redirect);
           /* All toplevel new app windows will be created on desktop (root),
            * so lets keep a list as they are created */
@@ -993,19 +989,19 @@ static void handle_rootWindow_event(const XEvent * const ev)
           if(!ev->xmap.override_redirect)
           {
                Window wnd = ev->xmap.window;
-               if(find_victim(wnd))
+               if(find_victim(dpy, wnd, mutex))
                {
                     /* If we get MapNotify on root before ReparentNotify for our
                      * victim this means either:-
                      * (1) There is no reparenting window manager running
-                     * (2) We are running over NX 
+                     * (2) We are running over NX
                      * With NX, we get the MapNotify way too early! (window not
                      * mapped yet on the server), so need to be clever?
                      * Set flag, this will be used later in the select loop */
                     D("Looks like no reparenting WM running\n");
-		    change_leader();
+		    change_leader(dpy, victimDetails.window, rootWin);
                     victimDetails.noWmRunning = true;
-		    reparent_window();
+		    reparent_window(dpy);
                }
           }
 	  break;
@@ -1020,22 +1016,22 @@ static void handle_rootWindow_event(const XEvent * const ev)
 					       ev->xreparent.override_redirect);
 
           /* A window has been reparented, if window manager is allowed to
-           * fiddle, lets see if this is the window  we are looking for */
+           * fiddle, lets see if this is the window we are looking for */
           if(!ev->xreparent.override_redirect)
           {
                Window wnd = ev->xreparent.window;
 
-               if(find_victim(wnd))
+               if(find_victim(dpy, wnd, mutex))
                {
                     /* Avoid the fight with window manager to get reparent,
                      * instead be kind and withdraw window and wait for WM
                      * to reparent window back to root */
                    D("Withdraw window 0x%x\n", (unsigned) wnd);
 
-                   XWithdrawWindow(display, wnd, DefaultScreen(display));
+                   XWithdrawWindow(dpy, wnd, DefaultScreen(dpy));
 #if 0
-		   change_leader();
-                   reparent_window();
+		   change_leader(dpy, victimDetails.window, rootWin);
+                   reparent_window(dpy);
 #endif
                }
           }
@@ -1049,7 +1045,7 @@ static void handle_rootWindow_event(const XEvent * const ev)
                                               ev->xconfigure.x, ev->xconfigure.y,
                                               ev->xconfigure.width,
                                               ev->xconfigure.height,
-					      ev->xconfigure.override_redirect);	
+					      ev->xconfigure.override_redirect);
           break;
 
 
@@ -1063,7 +1059,7 @@ static void handle_rootWindow_event(const XEvent * const ev)
 
 
      case DestroyNotify:
-          D("***DestroyNotify for root, window=0x%x\n", 
+          D("***DestroyNotify for root, window=0x%x\n",
                                           (unsigned) ev->xdestroywindow.window);
           break;
 
@@ -1071,22 +1067,21 @@ static void handle_rootWindow_event(const XEvent * const ev)
           D("***ClientMessage for root\n");
           break;
 
-     default: 
+     default:
           D("!!Got unhandled event for root->%d\n", ev->type);
           break;
      }
 }
 
-/******************************************************************************/
 /**
  * handle X event for the victim window
  *
+ * @param[in] dpy The display pointer
  * @param[in] ev the event
  *
  * @return none
- *
- *****************************************************************************/
-static void handle_victimWindow_event(const XEvent * const ev)
+ */
+static void handle_victimWindow_event(Display * dpy, const XEvent * const ev)
 {
      switch (ev->type)
      {
@@ -1097,7 +1092,7 @@ static void handle_victimWindow_event(const XEvent * const ev)
                                                      ev->xunmap.send_event);
 	  victimDetails.mapped = false;
           break;
-		    
+
      case MapNotify:
           D("MAPNOTIFY for victim, window=0x%x, override_redirect=%i\n",
                                                     (unsigned) ev->xmap.window,
@@ -1105,56 +1100,60 @@ static void handle_victimWindow_event(const XEvent * const ev)
           victimDetails.mapped = true;
 	  if(victimDetails.reparented)
           {
-	       adjust_window_size();
+	       adjust_window_size(dpy);
           }
           break;
-	    
+
      case ReparentNotify:
-          if (ev->xreparent.parent == parentDetails.window)
           {
- 	       D("REPARENT NOTIFY on victim to the right window, "
+               const XReparentEvent * evt = &ev->xreparent;
+
+               if (evt->parent == parentDetails.window)
+               {
+ 	             D("REPARENT NOTIFY on victim to the right window, "
 		                           "parent=0x%x, window=0x%x, "
                                            "x=%i, y=%i, override_redirect=%i\n",
-                                                (unsigned) ev->xreparent.parent,
-                                                (unsigned) ev->xreparent.window,
-                                               ev->xreparent.x, ev->xreparent.y,
-					       ev->xreparent.override_redirect);
-	       victimDetails.reparented = true;
-               if(!victimDetails.mapped)
-               {
-	            D("XMapWindow(0x%x)\n", (unsigned) victimDetails.window);
-                    XMapWindow(display, victimDetails.window);
-               }
+                                                (unsigned) evt->parent,
+                                                (unsigned) evt->window,
+                                               evt->x, evt->y,
+					       evt->override_redirect);
+	            victimDetails.reparented = true;
+                    if(!victimDetails.mapped)
+                    {
+	                 D("XMapWindow(0x%x)\n", (unsigned) victimDetails.window);
+                         XMapWindow(dpy, victimDetails.window);
+                    }
+                    else
+                    {
+	                 adjust_window_size(dpy);
+                    }
+	       }
                else
                {
-	            adjust_window_size();
-               }
-	  } 
-          else 
-          {
-	       D("REPARENT NOTIFY on victim to some other window! "
+	            D("REPARENT NOTIFY on victim to some other window! "
 		                           "parent=0x%x, window=0x%x, "
                                            "x=%i, y=%i, override_redirect=%i\n",
-                                               (unsigned) ev->xreparent.parent,
-                                               (unsigned) ev->xreparent.window,
-                                               ev->xreparent.x, ev->xreparent.y,
-  					       ev->xreparent.override_redirect);
-               victimDetails.noWmRunning = false;
-	       victimDetails.reparented = false;
-               reparent_window();
-	  }
+                                               (unsigned) evt->parent,
+                                               (unsigned) evt->window,
+                                               evt->x, evt->y,
+  					       evt->override_redirect);
+                    victimDetails.noWmRunning = false;
+	            victimDetails.reparented = false;
+                    reparent_window(dpy);
+	       }
+          }
 	  break;
 
      case ConfigureNotify:
-          D("CONFIGURE NOTIFY for victim, window=0x%x," 
+          D("CONFIGURE NOTIFY for victim, window=0x%x,"
                                     " x=%d, y=%d, w=%d, h=%d, "
                                     "border_width=%d, override_redirect=%i\n",
                                               (unsigned) ev->xconfigure.window,
-                                             ev->xconfigure.x, ev->xconfigure.y, 
-                                              ev->xconfigure.width, 
-                                              ev->xconfigure.height, 
+                                             ev->xconfigure.x, ev->xconfigure.y,
+                                              ev->xconfigure.width,
+                                              ev->xconfigure.height,
                           		      ev->xconfigure.border_width,
-					      ev->xconfigure.override_redirect);	
+					      ev->xconfigure.override_redirect);
           break;
 
      case ClientMessage:
@@ -1163,31 +1162,47 @@ static void handle_victimWindow_event(const XEvent * const ev)
           break;
 
      case DestroyNotify:
-          D("DESTROY NOTIFY for victim, window=0x%x\n", 
+          D("DESTROY NOTIFY for victim, window=0x%x\n",
                                           (unsigned) ev->xdestroywindow.window);
           if(ev->xdestroywindow.window == victimDetails.window)
           {
-               XSelectInput(display, victimDetails.window, 0);
+               XSelectInput(dpy, victimDetails.window, 0);
                victimDetails.window = 0;
           }
           break;
 
-     default: 
-          D("!!Got unhandled event for victim->%d\n", ev->type);
+     case EnterNotify:
+          D("ENTER NOTIFY for victim, window=0x%x\n", (unsigned) ev->xcrossing.window);
+          if(ev->xcrossing.mode == NotifyGrab)
+          {
+               D("Pointer grabbed by child!!\n");
+          }
+          break;
+
+     default:
+          {
+              char * name = "";
+              switch (ev->type)
+              {
+                   case FocusIn: name="FOCUS IN"; break;
+                   case FocusOut: name="FOCUS OUT"; break;
+                   case LeaveNotify: name="LEAVE NOTIFY"; break;
+              }
+              D("!!Got unhandled event for victim->%s(%d)\n", name, ev->type);
+          }
           break;
      }
 }
 
-/******************************************************************************/
 /**
  * handle X event for the parent window
  *
+ * @param[in] dpy The display Pointer
  * @param[in] ev the event
  *
  * @return none
- *
- *****************************************************************************/
-static void handle_parentWindow_event(const XEvent * const ev)
+ */
+static void handle_parentWindow_event(Display * dpy, const XEvent * const ev)
 {
      unsigned long mask;
      switch (ev->type)
@@ -1206,71 +1221,72 @@ static void handle_parentWindow_event(const XEvent * const ev)
                if(mask & (CWHeight | CWWidth))
                {
                     D(" - request to set width & height\n");
-	            set_aspect(ev->xconfigurerequest.width, 
-                                                  ev->xconfigurerequest.height);
+	            victimDetails.idealWidth = ev->xconfigurerequest.width,
+                    victimDetails.idealHeight = ev->xconfigurerequest.height;
                     adjustWindow = true;
                }
                if(mask & (CWBorderWidth))
                {
-                    const int w = ev->xconfigurerequest.border_width; 
+                    const int w = ev->xconfigurerequest.border_width;
                     D("- request to set border width=%d\n", w);
                     if(victimDetails.borderWidth != w)
                     {
                          victimDetails.borderWidth = w;
                          adjustWindow = true;
                     }
-                    XSetWindowBorderWidth(display, victimDetails.window, 
+                    XSetWindowBorderWidth(dpy, victimDetails.window,
                                                                   (unsigned) w);
                }
                /* Only adjust if window has been mapped and reparented */
-               if(adjustWindow && victimDetails.mapped 
+               if(adjustWindow && victimDetails.mapped
                                                     && victimDetails.reparented)
                {
-                    adjust_window_size();
+                    adjust_window_size(dpy);
                }
           }
 	  break;
 
-     default: 
+     default:
           D("!!Got unhandled event for PARENT->%d\n", ev->type);
           break;
      }
 }
-	
-/******************************************************************************/
+
 /**
  * Check events from X
  * Read in events from X and process, keep reading in events until no more
  * and then exit. It is important that all events have been processed and
  * not left pending.
  *
- * @return none
+ * @param[in] dpy The display pointer
+ * @param[in] mutex The swallow mutex
  *
- *****************************************************************************/
-static void check_x_events(void)
+ * @return none
+ */
+static void check_x_events(Display * dpy, SwallowMutex_t * mutex)
 {
-     int numEvents = XPending(display);
+     int numEvents = XPending(dpy);
 
      /* While some events pending... Get and action */
      while (numEvents > 0)
      {
           XEvent ev;
 
-          XNextEvent(display, &ev);
-         
+          XNextEvent(dpy, &ev);
+
 	  if (ev.xany.window == wattr.root)
 	  {
-               handle_rootWindow_event(&ev);
+               handle_rootWindow_event(dpy, wattr.root, &ev, mutex);
 	  }
-	  else if (victimDetails.window 
+	  else if (victimDetails.window
                                && ev.xany.window == victimDetails.window)
 	  {
-               handle_victimWindow_event(&ev);
+               handle_victimWindow_event(dpy, &ev);
 	  }
-          else if (parentDetails.window 
+          else if (parentDetails.window
                                     && (ev.xany.window == parentDetails.window))
 	  {
-               handle_parentWindow_event(&ev);
+               handle_parentWindow_event(dpy, &ev);
 	  }
           else
           {
@@ -1282,91 +1298,118 @@ static void check_x_events(void)
           numEvents--;
           if(numEvents == 0)
           {
-               numEvents = XPending(display);
+               numEvents = XPending(dpy);
           }
      }
 }
 
-/******************************************************************************/
+/**
+ * Terminate, called from signal handler or when SHUTDOWN_MSG received
+ *
+ * @param[in] mutex The swallow mutex
+ * @param[in] pid The process ID of the mutex
+ * @param[in] dpy The display pointer
+ */
+static void terminate(SwallowMutex_t * mutex, pid_t pid, Display * dpy)
+{
+#ifdef USE_MUTEX_LOCK
+     giveSwallowMutex(mutex);
+#endif
+
+     if(pid >= 0)
+     {
+          kill_app(pid);
+     }
+
+     if(dpy)
+     {
+          XCloseDisplay(dpy);
+     }
+}
+
+
 /**
  * Check events from pipe connected to mozplugger
  * Read in events from pipe connected to mozplugger and process
  *
- * @return none
+ * @param[in] dpy The display pointer
+ * @param[in] mutex The swallow mutex
+ * @param[in] pid The process ID of the mutex
  *
- *****************************************************************************/
-static void check_pipe_fd_events(void)
+ * @return none
+ */
+static void check_pipe_fd_events(Display * dpy, SwallowMutex_t * mutex)
 {
-     static NPWindow wintmp;
+     struct PipeMsg_s msg;
      int n;
-  
+
      Window oldwindow = parentDetails.window;
-     D("Got pipe_fd data, old parent=0x%x pipe_fd=%d\n", 
-                                                 (unsigned) oldwindow, pipe_fd);
-  
-     n = read(pipe_fd, ((char *)& wintmp),  sizeof(wintmp));
-     if (n < 0)
+
+     n = read(pipe_fd, ((char *)&msg),  sizeof(msg));
+     if((n == 0) || ((n < 0) && (errno != EINTR)))
      {
-	  if (errno == EINTR) 
+          D("Pipe read error, returned n=%i\n", n);
+          terminate(mutex, sig_globals.childPid, dpy);
+	  exit(EX_UNAVAILABLE);
+     }
+
+     if (n != sizeof(msg))
+     {
+          if(n > 0)
           {
-               return;
+              D("Pipe msg too short, size = %i\n", n);
           }
-	  D("Winddata read error, exiting\n");
-#ifdef USE_MUTEX_LOCK
-          giveSwallowMutex();
-#endif
-	  exit(EX_UNAVAILABLE);
-     }
-  
-     if (n == 0)
-     {
-	  D("Winddata EOF, exiting\n");
-#ifdef USE_MUTEX_LOCK
-          giveSwallowMutex();
-#endif
-	  exit(EX_UNAVAILABLE);
-     }
-  
-     if (n != sizeof(wintmp))
-     {
 	  return;
      }
-  
-     parentDetails.window = (Window) wintmp.window;
-     parentDetails.width = (int) wintmp.width;
-     parentDetails.height = (int) wintmp.height;
 
-     D("Got pipe_fd data, new parent=0x%x\n", (unsigned) parentDetails.window);
-  
-     if (parentDetails.window && display )
+     switch(msg.msgType)
+     {
+          case WINDOW_MSG:
+               parentDetails.window = (Window) msg.window_msg.window;
+               parentDetails.width = (int) msg.window_msg.width;
+               parentDetails.height = (int) msg.window_msg.height;
+               D("Read Pipe, got WINDOW_MSG (win=0x%x - %i x %i)\n",
+                       (unsigned) parentDetails.window, parentDetails.width, parentDetails.height);
+               break;
+
+          case SHUTDOWN_MSG:
+               D("Read Pipe, got SHUTDOWN_MSG, terminating..\n");
+               terminate(mutex, sig_globals.childPid, dpy);
+               exit(EXIT_SUCCESS);
+
+          default:
+               D("Read Pipe, got unknown msg\n");
+               return;
+     }
+
+     if (parentDetails.window && dpy )
      {
           if(parentDetails.window != oldwindow)
           {
+               D("Switch parent window from 0x%x to 0x%x\n", (unsigned)oldwindow, (unsigned) parentDetails.window);
                victimDetails.reparented = false;
 
                /* To avoid losing events, enable monitoring events on new parent
                 * before disabling monitoring events on the old parent */
 
-               XSelectInput(display, parentDetails.window, 
-                                                      SubstructureRedirectMask);
-               XSync(display, False);
-               XSelectInput(display, oldwindow, 0);
-        
+               XSelectInput(dpy, parentDetails.window, SubstructureRedirectMask | FocusChangeMask);
+               XSync(dpy, False);
+               XSelectInput(dpy, oldwindow, 0);
+
                if(victimDetails.window)
                {
-                    reparent_window();
+                    reparent_window(dpy);
                }
                else
                {
                     D("Victim window not ready to be reparented\n");
                }
           }
- 
-          if(victimDetails.window && victimDetails.mapped 
-                                                    && victimDetails.reparented)
+
+          if(victimDetails.window && victimDetails.mapped && victimDetails.reparented)
           {
                /* The window has been resized. */
-               adjust_window_size();
+               adjust_window_size(dpy);
           }
           else
           {
@@ -1375,181 +1418,211 @@ static void check_pipe_fd_events(void)
      }
 }
 
-/******************************************************************************/
+/**
+ * Check the app status
+ *
+ * @param[in] flags The command flags
+ *
+ * @return -2 if broken, -1 
+ */
+static int check_app_status(unsigned flags)
+{
+     int retVal = 1;
+     int status = wait_child(sig_globals.childPid);
+             
+     switch(status)
+     {
+     case -2:  /* App crashed */
+          sig_globals.childPid = -1;
+          exit(EX_UNAVAILABLE);
+          break;
+
+     case -1: /* App exited OK */
+          sig_globals.childPid = -1;
+          if (!(flags & H_IGNORE_ERRORS))
+          {
+               exit(WEXITSTATUS(status));
+          }
+          break;
+
+     case 0: /* App deattached */
+          sig_globals.childPid = -1;
+          if((flags & H_DAEMON) == 0)
+          {
+               retVal = -1;
+          }
+          else
+          {
+               D("Child process has detached, keep going\n");
+               retVal = 0;
+          }
+     /* case 1:  App still running */
+     }
+     return retVal;
+}
+
 /**
  * Keep checking all events until application dies
  * Use select to check if any events need processing
  *
- * @return none
+ * @param[in] dpy The display pointer
+ * @param[in] mutex The swallow mutex
  *
- *****************************************************************************/
-static void check_all_events(pid_t pid)
+ * @return none
+ */
+static void check_all_events(Display * dpy, SwallowMutex_t * mutex)
 {
-     int maxfd;
-     fd_set fds;
-     int status;
+     int sig_chld_fd = get_SIGCHLD_fd();
 
      while(1)
      {
+          int rd_chld_fd = get_chld_out_fd();
 	  int selectRetVal;
-          int sig_chld_fd;
+          int maxfd = 0;
 
-	  struct timeval   timeout;
+	  struct timeval timeout;
           struct timeval * pTimeout = 0;
-          if (display)
-          {
-	       check_x_events();
-          }
+
+          fd_set fds;
 
           FD_ZERO(&fds);
-          FD_SET(ConnectionNumber(display), &fds);
+          if (dpy)
+          {
+	       check_x_events(dpy, mutex);
+
+               maxfd = ConnectionNumber(dpy);
+               FD_SET(ConnectionNumber(dpy), &fds);
+               /* If NX is is use and nxagent is configured as rootless, it can
+               * appear that there is no WM running, but actually there is and its
+               * actions (reparenting to add decorations) is invisible. In this
+               * case just reparent 4 times in a row with 1 second gaps. If the
+               * link latency > 4 seconds this may fail? */
+               if((victimDetails.noWmRunning)
+                             && (victimDetails.reparentedAttemptCount < 4))
+               {
+                    pTimeout = &timeout;
+                    pTimeout->tv_usec = 50000;
+                    pTimeout->tv_sec = 0;
+               }
+          }
+          maxfd = pipe_fd > maxfd ? pipe_fd : maxfd;
           FD_SET(pipe_fd, &fds);
-
-          maxfd = MAX(ConnectionNumber(display), pipe_fd);
-
-          sig_chld_fd = get_SIGCHLD_fd();
           if(sig_chld_fd >= 0)
           {
+               maxfd = sig_chld_fd > maxfd ? sig_chld_fd : maxfd;
                FD_SET(sig_chld_fd, &fds);
-               maxfd = MAX(maxfd, sig_chld_fd);
           }
-
-          /* If NX is is use and nxagent is configured as rootless, it can
-           * appear that there is no WM running, but actually there is and its
-           * actions (reparenting to add decorations) is invisible. In this
-           * case just reparent 4 times in a row with 1 second gaps. If the
-           * link latency > 4 seconds this may fail? */ 
-          if((victimDetails.noWmRunning)
-                             && (victimDetails.reparentedAttemptCount < 4))
+          if(rd_chld_fd >= 0)
           {
-               pTimeout = &timeout;
-               pTimeout->tv_usec = 50000;
-               pTimeout->tv_sec = 0;
+               maxfd = rd_chld_fd > maxfd ? rd_chld_fd : maxfd;
+               FD_SET(rd_chld_fd, &fds);
           }
 
           D("SELECT IN %s\n", pTimeout ? "with timeout" : "");
-
           selectRetVal = select(maxfd + 1, &fds, NULL, NULL, pTimeout);
+          D("SELECT OUT\n");
+
           if(selectRetVal > 0)
           {
-	       if (FD_ISSET(pipe_fd, &fds))
+	       if((pipe_fd >= 0) && FD_ISSET(pipe_fd, &fds))
                {
-	            check_pipe_fd_events();
+	            check_pipe_fd_events(dpy, mutex);
                }
-               if( FD_ISSET(sig_chld_fd, &fds))
+               if((sig_chld_fd >= 0) && FD_ISSET(sig_chld_fd, &fds))
                {
                     handle_SIGCHLD_event();
-               }  
+               }
+               if((rd_chld_fd >= 0) && FD_ISSET(rd_chld_fd, &fds))
+               {
+                    handle_chld_out_event(rd_chld_fd);
+               }
           }
 	  else if((selectRetVal == 0) && pTimeout)
           {
                D("Select timeout and suspect invisible WM\n");
-               reparent_window();
+               reparent_window(dpy);
           }
           else
           {
                D("Select exited unexpected, errno = %i\n", errno);
           }
-          D("SELECT OUT\n");
 
-          if(pid >= 0)
+          if(sig_globals.childPid >= 0)
           {
-	       if(waitpid(pid, &status, WNOHANG))
+               int retVal = check_app_status(flags);
+	       if(retVal < 0)
                {
-                    pid = -1;     
-                    if((flags & H_DAEMON) == 0)
-                    {
-                         D("Child process has died status=%i\n", status);
-                         return;
-                    }
-                    else
-                    {
-                        D("Child process has detached, keep going\n");
-                    }
+                    return;
+               }
+               if(retVal == 0)
+               {
+                   sig_globals.childPid = -1;
                }
           }
      }
 }
 
-/******************************************************************************/
 /**
  * Handle the application
  * Wait for application to finish and exit helper if a problem
  *
- * @param[in] pid process ID of the application
+ * @param[in] dpy The display pointer
+ * @param[in] mutex The swallow mutex
  *
  * @return none
- *
- *****************************************************************************/
-static void handle_app(pid_t pid)
+ */
+static void handle_app(Display * dpy, SwallowMutex_t * mutex)
 {
-     int status;
-
-     victimDetails.pid = pid;
-
      if (flags & H_SWALLOW)
      {
           /* Whilst waiting for the Application to complete, check X events */
-	  check_all_events(pid);
+	  check_all_events(dpy, mutex);
 
 #ifdef USE_MUTEX_LOCK
           /* Make sure the semaphore has been released */
-          giveSwallowMutex();
+          giveSwallowMutex(mutex);
 #endif
      }
      else if(flags & H_DAEMON)
      {
-          victimDetails.pid = -1;
           /* If Daemon, then it is not supposed to exit, so we exit instead */
-          exit(0);
+          D("App has become a daemon, so exit\n");
+          terminate(mutex, -1, dpy);
+          exit(EXIT_SUCCESS);
      }
      else
      {
-          /* Just wait for the Application to complete dont check X events */
-	  waitpid(pid, &status, 0);
+	  check_all_events(NULL, NULL);
      }
 
-     victimDetails.pid = -1;
-
-     /* If Application completed is a bad way, then lets give up now */
-     if (!WIFEXITED(status))
-     {
-	  D("Process dumped core or something...\n");
-	  exit(EX_UNAVAILABLE);
-     }
-
-     if (WEXITSTATUS(status) && !(flags & H_IGNORE_ERRORS))
-     {
-	  D("Process exited with error code: %d\n", WEXITSTATUS(status));
-	  exit(WEXITSTATUS(status));
-     }
-
+     sig_globals.childPid = -1;
      D("Exited OK!\n");
 }
 
-/******************************************************************************/
 /**
  * Exit early due to problem. Prints a message to stderr and then exits
  * the application
  *
  * @return none
- *
- *****************************************************************************/
+ */
 static void exitEarly(void)
 {
      fprintf(stderr,"MozPlugger version " VERSION " helper application.\n"
 		  "Please see 'man mozplugger' for details.\n");
-     exit(1);
+     exit(EXIT_FAILURE);
 }
 
-/******************************************************************************/
 /**
  * Expands the winname if it contains %f or %p by replacing %f by the file
  * name part of the URL or %p by the whole of thr URL.
  *
- * @return none
+ * @param[in,out] buffer The data buffer to use
+ * @param[in] bufferLen Size of buffer
+ * @param[in] winname The window name
+ * @param[in] file The file name associated with child
  *
- *****************************************************************************/
+ * @return none
+ */
 static void expand_winname(char * buffer, int bufferLen, const char * winame, const char * file)
 {
      const char * p = winame;
@@ -1575,20 +1648,20 @@ static void expand_winname(char * buffer, int bufferLen, const char * winame, co
                          break;
 
                     case 'f' :       /* %f = insert just the filename no path */
-                         r = strrchr(file, '/');   /* Find the filename start */
+                         r = strrchr(file, '/'); /* Find the filename start */
                          if(r == 0)
                          {
                               r = file;
                          }
                          else
                          {
-                              r++;       /* Skip the slash */
+                              r++; /* Skip the slash */
                          }
                          while((*r != '\0') && (q < end))
                          {
                               *q++ = *r++;
                          }
-                         p += 2;       /* Skip the %f */ 
+                         p += 2; /* Skip the %f */
                          break;
 
                     case 'p' :
@@ -1611,50 +1684,39 @@ static void expand_winname(char * buffer, int bufferLen, const char * winame, co
      D("winame after expansion is '%s'\n", buffer);
 }
 
-/******************************************************************************/
 /**
- * Handle the SIGTERM signal. Terminate the helper and child.
+ * Handle the SIGTERM signal. Terminate the helper and child. Calling C-lib
+ * functions in a signal handler is not good, so avoid if we can. Best if
+ * mozplugger.so uses the SHUTDOWN_MSG.
  *
  * @return none
- *
- *****************************************************************************/
+ */
 static void sigTerm()
 {
      D("SIGTERM received\n");
-#ifdef USE_MUTEX_LOCK
-     giveSwallowMutex();
-#endif 	
-     if(display)
-     {
-          XCloseDisplay(display);
-          display = 0;
-     }
-
-     if(victimDetails.pid >= 0)
-     {
-          my_kill(-victimDetails.pid);
-          victimDetails.pid = -1;
-     }
-
-    _exit(0);
+     terminate(sig_globals.mutex, sig_globals.childPid, sig_globals.dpy);
+     _exit(EXIT_SUCCESS);
 }
 
-/******************************************************************************
- **
- * main() -  normally called from the child process started by mozplugger.so 
+/**
+ * main() - normally called from the child process started by mozplugger.so
  *
  * @param[in] argc The number of arguments
  * @param[in] argv List of arguments
  *
  * @return Never returns (unless app exits)
- * 
- *****************************************************************************/
+ */
 int main(int argc, char **argv)
 {
      char buffer[100];
 
      unsigned long temp = 0;
-     int x, y, i;
+     int i;
+     int repeats;
+     Display * dpy;
+     SwallowMutex_t mutex;
+     char * command;
+
      D("Helper started.....\n");
 
      if (argc < 3)
@@ -1663,20 +1725,17 @@ int main(int argc, char **argv)
      }
 
      memset(&victimDetails, 0, sizeof(victimDetails));
-     victimDetails.pid = -1;
      memset(&parentDetails, 0, sizeof(parentDetails));
 
-     i = sscanf(argv[1],"%d,%d,%d,%lu,%d,%d,%d,%d",
+     i = sscanf(argv[1],"%d,%d,%d,%lu,%d,%d",
 	    &flags,
 	    &repeats,
 	    &pipe_fd,
 	    &temp,
-	    &x,       /* Not needed and not used */
-	    &y,       /* Not needed and not used */
 	    &parentDetails.width,
 	    &parentDetails.height);
 
-     if(i < 8)
+     if(i < 6)
      {
           exitEarly();
      }
@@ -1702,18 +1761,23 @@ int main(int argc, char **argv)
 
      /* Create handler for when terminating the helper */
 
+
+     sig_globals.dpy = dpy = setup_display();
+     sig_globals.mutex = NULL;
+     sig_globals.childPid = -1;
+
      signal(SIGTERM, sigTerm);
 
-     if (!setup_display())
+     if (!dpy)
      {
          if( (flags & H_SWALLOW) != 0)
-         { 
+         {
 	      D("Failed to open X display - canceling swallow functionality\n");
 	      flags &=~ H_SWALLOW;
          }
      }
 
-     if (repeats < 1) 
+     if (repeats < 1)
      {
           repeats = 1;
      }
@@ -1722,7 +1786,6 @@ int main(int argc, char **argv)
      {
 	  int loops = 1;
 	  pid_t pid;
-          int maxFd;
 
 	  /* This application will use the $repeat variable */
 	  if (flags & H_REPEATCOUNT)
@@ -1733,69 +1796,55 @@ int main(int argc, char **argv)
 	  /* Expecting the application to loop */
 	  if (flags & H_LOOP)
           {
-	       loops = MAXINT;
+	       loops = INF_LOOPS;
           }
 
 	  if (flags & H_SWALLOW)
 	  {
-               initWindowOwnerMarker();
-
 #ifdef USE_MUTEX_LOCK
 	       /* If we are swallowing a victim window we need to guard
 		  against more than one instance of helper running in
 		  parallel, this is done using a global mutex semaphore.
                   Although its not successful in all cases! */
-	       initSwallowMutex();
+	       initSwallowMutex(dpy, wattr.root, &mutex);
+               sig_globals.mutex = &mutex;
 
-
-               /* There is a race condition when taking the semaphore that 
+               /* There is a race condition when taking the semaphore that
                 * means occasionally we think we have it but we dont
                 * This do-while loop checks for that case - this
                 * is better than putting a wait in the take semaphore
                 * rechecking loop fixes Mozdev bug 20088 */
                do
                {
-	           takeSwallowMutex(); 
+	           takeSwallowMutex(&mutex);
                }
-               while(!stillHaveMutex());
+               while(!stillHaveMutex(&mutex));
 #endif
-               XSelectInput(display, parentDetails.window, 
-                                                      SubstructureRedirectMask);
-	       XSelectInput(display, wattr.root, SubstructureNotifyMask);
-	       XSync(display, False);
+               XSelectInput(dpy, parentDetails.window, SubstructureRedirectMask);
+	       XSelectInput(dpy, wattr.root, SubstructureNotifyMask);
+	       XSync(dpy, False);
 	  }
 
-          maxFd = pipe_fd;
-          if(display && (ConnectionNumber(display) > maxFd))
-          {
-               maxFd = ConnectionNumber(display);
-          }
-
-          pid = spawn_app(command, flags, maxFd);
+          pid = spawn_app(command, flags);
 	  if(pid == -1)
           {
-#ifdef USE_MUTEX_LOCK
-               giveSwallowMutex();  
-#endif
+               terminate(&mutex, -1, dpy);
 	       exit(EX_UNAVAILABLE);
           }
-     
+          sig_globals.childPid = pid;
+
 	  D("Waiting for pid=%d\n", pid);
 
-	  handle_app(pid);
+	  handle_app(dpy, &mutex);
 
 	  D("Wait done (repeats=%d, loops=%d)\n", repeats, loops);
-	  if (repeats < MAXINT)
+	  if (repeats < INF_LOOPS)
           {
 	       repeats -= loops;
 	  }
-    }
-
-    if(display)
-    {
-          XCloseDisplay(display);
-          display = 0;
      }
 
-     exit(0);
+     D("All done\n");
+     terminate(&mutex, -1, dpy);
+     return EXIT_SUCCESS;
 }
