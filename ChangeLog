@@ -1,0 +1,764 @@
+2012-02-26 release 1.14.5
+    * npapi:
+    Updated to NPAPI version 27 - mozdev bug #24760
+    * mozplugger.c:
+    split out some code to npn-get-helpers.c to
+    reduce size of mozplugger.c, plus added new stubs for the
+    new NPAPI functions.
+
+2012-01-04 release 1.14.4
+    * Makefile.in:
+    Use 'install' not 'cp' as install will also correctly set file
+    permissions.
+    * child.c:
+    Use setgpid() only in the controller and linker cases as was the case
+    in version 1.13.1 before common code factored out into child.c
+    mozdev bug #24544.
+
+2011-03-03 release 1.14.3
+    * config.h.in, mozplugger.c, Makefile.in, configure.ac, configure:
+    Add option to build for chromium by setting --enable-always-xembed,
+    mozdev bug #23735
+
+    * Makefile:
+    Introduce autoconf to build mozplugger. mozdev bug #23734
+
+    * mozplugger.c :
+    Added code to handle URLs with semicolons in a safe manner. URL will
+    still be rejected when streaming as the URL will be passes to the
+    shell. mozdev bug #23733
+
+    * mozplugger.c :
+    Added fix for mozdev bug #23732
+
+2010-09-18 release 1.14.2
+    * mozplugger.c :
+    Added fix for mozdev bug #23188
+
+
+2010-08-07 release 1.14.1
+      * mozplugger.c:
+      Added fix for mozdev bug #23007
+      
+      * mozplugger.c:
+      Added further improvements for mozdev bug #22863 (patches provided
+      by Coretin Chary)
+
+      * mozplugger.c:
+      Added support for javascript mozdev bug #22717
+
+
+2010-06-12 release 1.14.0
+      * mozplugger.c:
+      Added code to check browser supports XEmbed, before reporting that
+      plugin needs XEmbed. See mozdev bug #22890
+
+      * mozplugger.c: 
+      Added fix for mozdev bug #22863.
+
+      * mozpluggerrc: 
+      Added suggested line to mozpluggerrc for epdfview. See 
+      mozdev bug#22597
+
+2010-04-14 release 1.13.3
+      * mozplugger.h, mozplugger.c, mozplugger.7, mozpluggerrc:
+      Remove H_HIDDEN as it doesnt actual do anything.
+    
+      * mozplugger.h, mozplugger.c, mozplugger.7:
+      Added H_NEEDS_XEMBED as it is only required in certain cases otherwise
+      it causes problems with keyboard focus. See Mozdev bugs #22723, #22715
+      and #22065
+
+2010-02-17 release 1.13.2
+       * mozplugger-helper.c:
+       Tidy-up - removed the repeated open display close display when 
+       repeats > 1.
+       First withdraw window before reparenting. This makes it more robust
+       as mozplugger is no longer fighting with the window manager. This
+       fixes. Mozdev bug #22440.
+
+       * mozplugger-child.c:
+       Remove duplication of code by moving common child (app) handling
+       code to a common file "mozplugger-child.c".
+
+2010-01-24 release 1.13.1
+        * npapi :
+	Updated to version 23 from the mozilla SDK. Not an exact copy but
+	merge in of changes from mozilla SDK into mozplugger.
+
+        * mozplugger-helper.c :
+        Changed code to look for victim and reparent in a different way
+	part of attempt to fix NX bug - using NX in particular 
+	configuration it was found that the swallow flag didnt work.
+
+	* mozplugger.c :
+	Added patch from Zhao for allowing mozplugger to work with
+	QT/Webkit based browsers.
+        Mozdev bug #22065
+
+2009-08-22 release 1.13.0
+	* mozpluggerrc :
+	Removed the outdated test for acroread version this avoids the
+	misleading message about "sh: acroread: command not found" that
+	appears on stderr. Mozdev bug #21144
+
+	* mozpluggerrc :
+	Removed the incorrect test to see if mplayer supports vorbis. The
+	user should edit mozpluggerrc to include or exclude mplayer based
+	on what codecs that have compiled in or out of mplayer.
+	Mozdev bug #21119
+
+        * mozplugger.c :
+	Removed unecessary calls to exit() in mozplugger.c plus spotted
+	fixed segmentation fault. Mozdev bug #21118
+
+        * mozplugger.c, mozpluggerrc:
+	Fixed limit on number of handlers, mime types and commands. Instead
+	there is now one limit which is on the amount of static memory
+	allocated. Mozdev bug #21117
+
+	* mozplugger-helper.c:
+	Added ability to expand the winname used in swallow to include the
+	$file variable. This allows to capture those windows that take the
+	name of the file they are displaying. Thanks to Przemek Króliszewski
+	for providing the idea and intial patch. Mozdev bug #21071.
+
+	* mozplugger.c, npunix.c, npapi.h & npupp.h:
+	Bring API up to date by adding in missing functions. The API version
+	is now 0.22. Note, no new functionality added yet. Also switched
+	over to using nptypes.h which defines things like uint32_t etc.
+
+2009-04-16 release 1.12.1
+	* mozplugger-helper.c, mozplugger-linker.c, mozplugger-controller.c:
+	Removed select timeout to avoid CPU wakeups, add signal handler & pipe
+	to monitor when the child process dies (as opposed to a polling loop)
+	Mozdev bug #20662
+
+	* mozplugger-helper.c, mozpluggerrc:
+	When starting a second instance of evince, the second process will die
+	and hand over control to the first process. This causes
+	mozplugger-helper to fail to swallow the window as it thinks evince
+	has died. Solution is to set the exits flag in mozpluggerrc and
+	alter the code to allow for both exits & swallow flags to be set at
+	the same time.  Mozdev bug #20686
+    
+	* npapi:
+	Removed the obsolote JRI code. That is removal of the jri* header
+	files, the include of those header files in npapi.h, etc and the
+	removal of the NPN_GetJavaClass call from mozplugger.
+
+2008-11-13 release 1.12.0
+        * mozplugger-helper.c:
+	Added additional checks to see if still have ownership of
+	mutex semaphore to fix Mozdev bug #20088
+
+        * mozpluggerrc:
+	Applied patch to provide support for okular (KDE 4).
+	Mozdev bug #20114 (Laurent Leonard)
+  
+        * mozplugger,c, mozplugger.7, mozpluggerrc:
+	Added the enviroment variable $fragment so that the trailing 
+	fragment (the bit after the #) can be passed to the application
+	if so required. Updated mozpluggerrc with changes provided
+	by Walter Neumann to use the $fragment for acroread. 
+	Mozdev bug #20087 (Peter Leese & Walter Neumann)
+
+	* mozplugger-helper.c:
+	Fix the problem that mozplugger always picks the command with stream
+	flag set even if it is lower down the list of commands. Really
+	mozplugger should test each in order. 
+	Mozdev bug #20079
+
+2008-09-12 release 1.11.0
+
+	* mozplugger-helper.c:
+	For gv, always call XMoveResizeWindow in adjust_window_size(),
+	even when the target size has not changed. (Louis Bavoil)
+	
+        * mozplugger.c, mozplugger-linker.c:
+	Added the functionality that if autostart=0 and the application doesnt
+	handle autostart=0 that the linker will be used instead.
+
+        * mozplugger-linker.c:
+	Add new binary to handle the QT link special case that was previously
+	done by the controller. (Peter Leese)
+
+        * mozplugger-helper.c:
+	Added patch from Ari Pollak to fix failure to swallow mozdev
+	bug #19485 (Ari Pollak)
+
+        * mozplugger-controller.c:
+	Controls now have a 3 dimension look and go in when pressed. 
+	(Peter Leese)
+
+        * npapi.h, npupp.h, npunix.c:
+	Updated to as close to the latest versions from mozilla SDK but
+	without breaking backwards compatibility. Result is that NPP_GetValue
+	now works as expected - no new functionality added. (Peter Leese)
+
+        * Makefile:
+	Added fix for Mozdev bug #18943. (Ville Skytta)
+
+	* mozplugger.c, mozplugger-common.c, mozplugger-helper.c, mozplugger.h:
+	Tidy up - Moved include files out of mozplugger.h into various source
+	files and deleted unnecessary ones. (Peter Leese)
+	Corrected minor error where controller application incorrectly had the
+	helper name (as see wehn using ps command).
+
+	* mozplugger.c:
+	Added call to safeURL for mms URLs. (Peter Leese)
+
+	* mozplugger.c, mozplugger-common.c, mozplugger.h:
+	Code modified so that location of mozdebug file shown in the
+	about:plugins page is always correct. (Peter Leese)
+
+	* mozplugger-helper.c, mozplugger.c, mozplugger.7:
+	Code modfied not to use controls if mozilla passed null as the window 
+	to draw controls in. Updated man page to warn user of this possible
+	situaton. Some debug messages were also changed so as  not generate 
+	error messages but more friendly debug messages when this null window
+	event occurs.
+	- fix for Mozdev bug #18837 (Peter Leese)
+
+2008-03-22 release 1.10.2
+
+	* mozplugger-controller.c:
+	If mozpluggerrc command contains both the controls flag and $window
+	macro, the old behaviour was a bit odd. This has been changed to
+	instead put a small controller widget in top left corner of the
+	window. This allows controls to still work and also it only
+	obscures a small part of the window. (Peter Leese)
+
+	* mozplugger.7:
+	Added reference to <OBJECT> (as well as <EMBED>) to man page
+	(Peter Leese)
+
+	* mozplugger.c:
+	Removed the redundant passed parameter 'data' from all the
+	xxx_cb functions. (Peter Leese)
+	Fixed minor memory leak (Peter Leese)
+
+2008-01-06 release 1.10.1
+
+	* mozplugger-helper.c: Fixed XFree on uninitialized pointer in
+	init_winrecur(). (Louis Bavoil)
+
+2008-01-04 release 1.10.0
+
+	* mozplugger-helper.c:
+	Added code to send ConfigureNotify event to the victim. (Peter Leese)
+	[Mozdev bug #18298]
+
+	* mozplugger.c:
+	Added code to cache applications already previous found and thereby
+	reduce the number of 'lstat' calls. (Peter Leese)
+
+	* mozplugger.c, mozplugger.h & mozpluggerrc:
+	Add the flag 'fmatch' so that its now possible to match particular
+	commands with the contents of the URL e.g. if url ends with .asx
+	use mplayer -playlist $file. (Peter Leese)
+	This fixes Mozdev bug #10244
+
+	* mozplugger-helper.c:
+	Fixed race condition when swallowing more than one window in
+	parallel (peter leese) - [Mozdev bug #17775] and [Mozdev bug #13048]
+
+	* mozplugger.c:
+	Dramatically reduce size of allocated static memory (Peter Leese)
+
+	* mozplugger-helper.c:
+	Removed dependency on stdint.h (Peter Leese) [Mozdev bug #17532]
+
+2007-12-02 release 1.9.0
+
+	* mozplugger.c:
+	Added support for direct rtsp:// protocol urls (Peter Leese)
+
+	* mozplugger.c:
+	Allow controls to be drawn for full window objects (Peter Leese)
+
+	* mozplugger.c:
+	Only apply the work around to fix Mozdev bug #7734 for Mozilla API
+	less than version 0.14 (Peter Leese)
+
+	* mozplugger.7:
+	Added some additional text to help user debug problems (Peter Leese)
+
+	* mozplugger.h:
+	Added new flag H_LINKS to cope with Quicktime using clickable link
+	(Peter Leese) [Mozdev bug #18105]
+
+	* mozplugger.c:
+	Added new flag H_LINKS to cope with Quicktime using clickable link
+	(Peter Leese) [Mozdev bug #18105]
+
+	* mozpluggerrc:
+	Added new flag H_LINKS to cope with Quicktime using clickable link
+	Added the command for Mplayer, totem and Xine (Peter Leese) 
+	[Mozdev bug #18105]
+
+	* mozplugger.7:
+	Updated man to explain new "links" flag to cope with Quicktime using
+	clickable link (Peter Leese) [Mozdev bug #18105]
+
+	* mozplugger-helper.c:
+	Removed launching of mozplugger-controller from helper, now launched
+	directly from mozplugger.c hence no mozplugger-helper process is 
+	created (halving the number of processes running) (Peter Leese)
+	[Mozdev bug #17775]
+
+	* mozplugger.c:
+	"controls" no longer use "swallow" mechanism (Peter Leese) 
+	[Mozdev bug #17775]
+
+	* mozplugger-controller.c:
+	mozplugger-controller now called directly from mozplugger.c hence 
+	no mozplugger-helper process is created (halving the number of
+	processes running) (Peter Leese) [Mozdev bug #17775]
+
+	* mozplugger-helper.c:
+	Do not redirect SubstructureRequestMask events when H_SWALLOW is
+	false (Peter Leese). [Mozdev bug #17787]
+
+	* mozplugger-helper.c:
+	Fixed race condition in setSwallowMutexOwner() (Peter Leese).
+	[Mozdev bug #17775]
+
+	* mozplugger-controller.c:
+	Do not restart when repeats is 0 (Peter Leese).
+	[Mozdev bug #17672]
+
+	* mozplugger.c:
+	Added support for OBJECT tags (Peter Leese).
+	[Mozdev bug #17375]
+
+	* Makefile:
+	Fixed solaris-cc target.
+	[Mozdev bug #17532]
+
+2007-04-07 version 1.8.1
+
+	* mozplugger-helper.c:
+	The mutex code did not work on amd64, causing the helper to hang
+	forever (Ari Pollak).
+	
+2007-02-25 version 1.8.0
+
+	* mozplugger.c:
+	Default "autostart" to off when using "controls" (Peter Leese).
+	[Mozdev bug #16445]
+
+	* mozplugger-helper.c:
+	Added a mutex mechanism to avoid conflicts between multiple
+	mozplugger-helper instances (Peter Leese). [Mozdev bug #16427]
+
+	* mozplugger.c:
+	In versions 1.7.x, for "stream" commands, the browser was
+	downloading in parallel with the forked player. This has been
+	fixed using NPN_DestroyStream (Peter Leese). [Mozdev bug #16423]
+
+2007-01-17 version 1.7.4
+
+	* mozplugger.7:
+	Updated mozpluggerrc paths. [Mozdev bug #14253]
+
+	* mozpluggerrc:
+	Merged with Mandriva package (Giuseppe Ghibò).
+	Added Gimp (xcf) and Photoshop (psd).
+	Added OASIS OpenDocument (odt, ods, odp).
+	Added Protein Data Bank (pdb).
+	Added Lotus 1-2-3 (123, wk1).
+	Added FLAC audio.
+
+	* mozplugger-helper.c:
+	Removed hack which was resizing windows multiple times.
+
+	* mozplugger.h, mozplugger-controller.c:
+	Removed X11/Intrinsic.h includes.
+
+	* mozplugger-helper.c:
+	Clamp loop counter to 1 if less than 1. [Mozdev bug #11776]
+
+	* mozplugger.c:
+	Handle asterisks in mime-types. [Mozdev bug #11509]
+
+2005-08-30 version 1.7.3
+
+	* mozplugger-helper.c:
+	Fixed hidden-windows bug with Window Maker by mapping windows that
+	are correctly reparented but not mapped yet, in the X event handler.
+	[Mozdev bug #9971]
+
+	* mozplugger-helper.c:
+	Restored ConfigureRequest handler.
+
+	* mozpluggerrc:
+	Fixed GV command line for version 3.6.1.
+
+	* mozpluggerrc:
+	Switched mpg123 and mpg321. [Mozdev bug #10363]
+
+	* mozpluggerrc:
+	Added Totem support.
+
+	* mozplugger.c:
+	Added Quicktime and Windows Media Player spoof to plugin name.
+	[Mozdev bug #9979]
+
+	* mozplugger.c:
+	Added call to do_read_config() in NPP_Initialize().
+
+	* mozplugger.c:
+	Code cleanup.
+
+2005-04-16 version 1.7.2
+
+	* mozplugger.c:
+	Fixed parts of display obscured on firefox resize. [Mozdev bug #7734]
+	
+	* mozpluggerrc:
+	Added support for Acrobat Reader 7. (Tim Clymo)
+	Added support for evince for PDF and PS. [MozDev bug #9825]
+	Removed spaces in mime types. [MozDev bug #9539]
+
+	* mozplugger-controller.c:
+	Replaced setpgrp() with setpgid(pid,0). [MozDev bug #8839]
+	
+	* mozplugger-helper.c:
+	Removed the SubstructureRedirectMask handlers.
+
+	* mozplugger.c:
+	Now shows if DEBUG is enabled in "about:plugins". (Giuseppe Ghibò)
+
+2005-01-04 version 1.7.1
+
+	* Makefile, README:
+	Added make install prefix=/usr/local, make localinstall_mozilla,
+	make localinstall_netscape, and make make localinstall_opera.
+
+	* mozplugger.c:
+	Code cleanup.
+
+	* mozplugger.c:
+	Fixed a memory leak with Mozilla >= 1.7. The old code made the
+	assumption that global variables were shared between instances but
+	this is not always true with Mozilla >= 1.7.
+
+	* mozplugger.c:
+	Now filters out mime-type handlers with no command.
+
+	* mozpluggerrc:
+	Updated MPlayer, acroread, gnumeric, and OpenOffice. (Giuseppe Ghibò)
+	Disabled AbiWord because of problems reading from cache.
+	Added hxplay and kwrite.
+	Added stream flag to timitidy.
+
+	* mozplugger-helper.c:
+	Fixed not-maximized windows in adjust_window_size().
+
+2004-12-24 version 1.7.0
+
+	* npapi/include/npapi.h:
+	Applied ia64 patch (David Mosberger-Tang).
+
+	* mozpluggerrc:
+	Disabled mpg321 with m3u files. [MozDev bug #7825]
+
+	* mozplugger.7.bz2:
+	There were multiple name lines.  This made it impossible to
+	translate the page to DocBook (Eric S. Raymond).
+
+	* mozplugger.c:
+	Disabled the no-browser-download feature to fix a bug with recent
+	versions of Mozilla and Firefox when playing videos multiple times
+	[MozDev bug #7296].
+
+	* mozplugger-common.c, mozplugger.h:
+	Increased the timeout for a process to exit from 4ms to 100ms to
+	let enough time to Acrobat Reader to save its preferences when
+	killed by SIGTERM.
+
+	* mozplugger-helper.c:
+	Fixed bug on ConfigureRequest: the window was not always resized.
+	Resize the window before calling XMapWindow() on ReparentNotify.
+
+	* mozplugger-helper.c:
+	Removed XMapWindow() on UnmapNotify to fix flashing windows when
+	swallowing applications.
+
+	* mozplugger-helper.c:
+	Fixed a regression over MozPlugger 1.5.2: When an application was
+	previously opened outside of Mozilla, MozPlugger swallowed its
+	window instead of the right window.
+
+2004-09-27 version 1.6.2
+
+	* mozpluggerrc:
+	The Acrobat Reader entry does not rely on -tempFileTitle anymore.
+
+	* mozplugger-helper.c:
+	Removed loop on XReparentWindow().
+	Added XMapWindow(display, victim) on UnmapNotify.
+
+	* mozplugger.c:
+	Returns NPERR_GENERIC_ERROR in NPP_NewStream() when streaming to
+	fix a caching bug with Firefox.
+
+	* mozplugger-helper.c:
+	Removed unnecessary calls to XSync() and XMapWindow().
+
+	* mozplugger-helper.c:
+	Changed the default string comparaison function used with
+	swallow() from strncasecmp() to strstr().
+
+	* mozpluggerrc:
+	More reliable OpenOffice swallowing.
+	Fixed bug with XV 3.10.
+
+2004-08-18 version 1.6.1
+
+	* mozplugger-helper.c:	
+	Fixed bug introduced in the version 1.6.0. MozPlugger was not
+	waiting for applications that didn't use the swallow feature.
+	[MozDev bug #7032]
+
+	* mozplugger-helper.c:	
+	Changed the string comparaison function used with swallow() from
+	strcasecmp() to strncasecmp() to fix problems with Xpdf and Ted.
+	[MozDev bug #6945]
+	
+	* mozplugger-helper.c:	
+	Now calls XReparentWindow() multiple times to fix the swallow
+	feature on some X servers.
+	[Debian bug #264955]
+	
+	* mozpluggerrc:
+	Don't specify audio output driver for mplayer (should be specified
+	in mplayer config).
+	Added the openoffice command to the OO() macro.
+	Added the -e and -p options to xmms.
+	Removed the -window and -backdrop options from display.
+
+2004-07-11 version 1.6.0
+
+        New features from Plugger 5.1.2.
+	
+	* mozplugger-helper.c:
+	New swallowing mechanism.
+	Removed the "event_swallow" flag.
+
+	* mozplugger.c:
+	Now uses m4 to expand the config file.
+	Added the "hidden" flag.
+
+	* mozplugger.c, mozplugger-helper.c:
+	Fixed window resizing.
+
+	* mozpluggerrc:
+	Now swallows OpenOffice windows.
+	Disabled helper applications by default.
+
+	* mozplugger-common.c:	
+	When compiled with DEBUG defined, the mozdebug file is now created
+	in $TMPDIR instead of /tmp.
+
+2004-03-28 version 1.5.2
+
+	* mozplugger.c: Now uses the event_swallow method with
+	mozplugger-controller.
+
+	* mozplugger-controller.c: Fixed a buffer overflow.
+
+	* mozplugger-controller.c: Does not pop up the window anymore.
+
+	* mozplugger-helper.c: Fixed a bug with event_swallow that made it
+	fail if the target window was created before the event selection
+	had been actually done by the helper.
+
+2004-02-24 version 1.5.1
+	
+	* mozplugger-helper.c: Added XMapWindow() again to fix windows not
+	appearing on some X servers.
+
+	* mozplugger-helper.c: Returned to the "event_swallow" behavior of
+	1.4.2 to fix windows not being reparented on some computers.
+
+2004-01-15 version 1.5.0
+
+	* mozplugger.c: Added MMS support.
+
+	* mozplugger.c: Can now loop when using the "controls" flag.
+
+	* mozplugger-helper.c: Better Quicktime support using the qtsrc
+	field of EMBED tags when available. (Kees Cook)
+
+	* mozplugger-helper.c: Fixed window reparent failing randomly with
+	the "event_swallow" flag. (Eric Kerin)
+
+	* mozplugger-helper.c: In the event_swallow mode, MozPlugger now
+	waits passively for X events.
+
+	* mozpluggerrc: Now uses "event_swallow" with Acrobat Reader.
+
+	* mozpluggerrc: Removed -nocache 100 to avoid mplayer to hang
+	after some seconds of playback.
+
+	* mozplugger.c, mozplugger-helper.c: Removed dead code which was
+	using SIGWINCH.
+
+2003-12-16 version 1.4.2
+
+	* mozpluggerrc: Added the "stream" flag to RealPlayer.
+
+	* mozplugger.c: Fixed a segmentation fault when exporting
+	variables with no value.
+
+	* mozplugger.c: Fixed a free() on a literal string which made the
+	plugin crash when parsing commands with the "controls" flag.
+
+2003-12-07 version 1.4.1
+
+	* mozpluggerrc: Added soffice.
+
+	* mozpluggerrc: Added the option -cache 100 to mplayer.
+
+	* mozplugger.c, mozpluggerrc: Merged the flags "nokill" and "exits"
+	into "nokill".
+
+	* mozplugger-helper.c: Removed the flags "many" and "nofull".
+
+	* mozplugger-controller.c: New file created.
+
+	* mozplugger.c, mozpluggerrc: Added the flag "controls" to display a
+	controller with the buttons play, pause and stop while playing.
+
+	* mozplugger.c: Added the flags "embed" and "noembed" to enable to
+	define embed-only or full-window-only applications in the rc file.
+
+	* mozplugger.c: All the paramters of the <EMBED> tags are made
+	available in mozpluggerrc through environment variables.
+
+	* Makefile: Renamed the helper application from mozplugger to
+	mozplugger-helper and added mozplugger-controller.
+
+2003-09-10 version 1.3.2
+
+	* mozplugger-helper.c: Improved swallowing accuracy by scanning
+	windows twice faster.
+
+	* mozplugger.c: Fixed regression: the mozplugger helper could not
+	be found in ~/.mozilla, ~/.netscape or ~/.opera.
+
+2003-08-30 version 1.3.1
+
+	* Makefile: Now works with the HP-UX compilation tools.
+
+	* mozplugger-helper.c: Removed some dead code.
+
+	* mozpluggerrc: Fixed bug with timidity that prevented midi files
+	to be played in loop.
+
+2003-07-05 version 1.3.0
+
+	Major code cleanup.
+	
+	* mozplugger-common.c: New file created.
+
+	* mozplugger-helper.c, mozplugger.c: Added the flag "event_swallow"
+	to use an alternative event driven code. (Eric Kerin)
+
+	* mozplugger.c: In some conditions, MozPlugger now uses the href
+	field of embed tags. (Rafael Santiago)
+	
+	* mozplugger.c: The memory of an instance was not freed when the
+	instance was destroyed.
+
+	* mozplugger.c: Some embeded applications were not killed when
+	leaving a page.
+	
+	* mozplugger.c: For some files, Mozilla did not give the right
+	MIME type to Mozplugger when creating a new stream. Mozplugger
+	now uses the type given at instanciation time.
+
+	* mozplugger.c: Embeded files with loop=0 were not played.
+	
+	* mozplugger.c: The files begining with a / were not accepted.
+
+	* mozplugger-helper.c: The "maxaspect" flag did not work
+	correctly.
+
+	* mozpluggerrc: Removed -guiwid from mplayer lines;
+	Uses the new event_swallow() with gv and Ted.
+
+2003-06-14 version 1.2.1
+	
+	* mozplugger-helper.c: The swallow feature did not work on some
+	computers. Mozplugger now scans potential victim windows faster.
+	It takes a little more CPU in the initialization of the swallow
+	but it is more accurate.
+	
+2003-05-28 version 1.2.0
+
+	* mozplugger.c: MIME types for which no application is found are
+	not registered into Mozilla.
+
+	* mozplugger.c: Some Windows did not resize properly. (Eric Kerin)
+
+	* mozplugger.c: Added the flag "nofull" to restrict swallow.
+
+2003-04-24 version 1.1.3
+
+	* mozpluggerrc: Added Ted and fixed Abiword.
+	
+	* mozplugger.c: Fixed a bug with Mozilla 1.3 when re-opening
+	media files.
+
+	* mozplugger.c: By default, plugins are now repeated once.
+
+	* mozplugger-helper.c: Mozplugger swallows the most recently opened
+        instance of a window, not the first found. (Bernard Blackham)
+
+2003-03-14 version 1.1.2
+
+	* mozpluggerrc: Multiple invocations of Acrobat Reader continually
+	spawned new processes.
+
+	* mozplugger.c: Could not play mpeg mail attachments within mail
+	using mplayer.
+
+	* mozplugger.c, mozplugger-helper.c: Fixed bug on 64-bit architectures.
+
+	* mozplugger-helper.c: New environment variables : $width and $height
+
+2003-02-17 version 1.1.1
+
+	* mozpluggerrc: Added OGG and StarOffice support
+	
+	* mozplugger.c: It is no more useful to duplicate a command in the
+	rc file with and without the "stream" flag.
+
+	* mozplugger.c: Some embeded files were played twice.
+
+2003-02-16 version 1.1
+
+	* mozpluggerrc:
+	Added the support of PDF files
+	Added xine after mplayer for MPEG 1 and 2
+	Fixed bug with mplayer : fork bomb on some unplayable files
+	Fixed bug with xmms : temporary files undeleted in /tmp/plugtmp
+
+	* mozplugger.c: When using the "exits" flag, mozplugger (and
+	plugger 4.0) let a process in the system, until Mozilla exits.
+
+2003-02-08 version 1.0
+
+	* mozplugger.c, mozplugger-helper.c: The "stream" flag of the
+	file pluggerrc has been changed to make the browser just pass an
+	URL to the player without downloading the file. The old behaviour
+	is no more supported by Mozilla.
+	
+	* mozplugger.c: Fixed bug with Mozilla 1.x : a zombie process was
+	created for each loaded plugin, until Mozilla exits.
+
+	* mozplugger.c: "Running helper..." is no more displayed in the
+	status bar.

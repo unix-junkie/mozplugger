@@ -1,0 +1,11 @@
+#undef DEBUG
+
+#undef NODEBUG
+
+#undef XP_UNIX
+
+#undef VERSION
+
+#undef GCOV
+
+#undef ALWAYS_NEEDS_XEMBED

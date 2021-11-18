@@ -1,0 +1,230 @@
+# @configure_input@
+
+# For building rpms
+root=
+
+# For installing
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+datarootdir=@datarootdir@
+
+#For building away from source directory
+srcdir=@srcdir@
+VPATH=@srcdir@ 
+PLUGINDIRS=@PLUGINDIRS@
+
+# On 64 bit arch change libprefix to lib64
+libprefix=/lib
+#libprefix=/lib64
+
+#
+#
+RPMDIR=/usr/src/RPM
+
+# Choose compiler
+CC=@CC@
+MKDIR=mkdir -p
+
+SOURCE_FILES=mozplugger.c \
+	     mozplugger-common.c \
+	     mozplugger-helper.c \
+	     mozplugger-controller.c \
+	     mozplugger-linker.c \
+	     mozplugger.spec \
+	     child.c \
+	     debug.c \
+	     mozplugger.h \
+	     child.h \
+	     debug.h \
+	     npn-get-helpers.h \
+	     npn-get-helpers.c \
+	     npapi/common/npunix.c \
+	     npapi/include/npapi.h \
+	     npapi/include/npupp.h \
+	     npapi/include/nptypes.h \
+	     npapi/include/npruntime.h \
+	     Makefile.in \
+	     Makefile.old \
+	     mozplugger.7 \
+	     README \
+	     COPYING \
+	     ChangeLog \
+	     mozpluggerrc \
+	     configure.ac \
+	     config.h.in \
+	     configure
+
+
+BIN_FILES=mozplugger.so \
+	  mozplugger-helper \
+	  mozplugger-controller \
+	  mozplugger-linker \
+	  Makefile \
+	  mozplugger.7 \
+	  README \
+	  COPYING \
+	  ChangeLog \
+	  mozpluggerrc \
+	  config.h
+
+
+DEFINES= @DEFS@ @XCPPFLAGS@ -DSYSCONFDIR=\"@sysconfdir@\" #-D__amd64__
+INCLUDES= -I. -I$(srcdir) -I$(srcdir)/npapi/include
+COMMON_CFLAGS=$(INCLUDES) $(DEFINES)
+
+XLIBS=@LIBS@
+
+LDSHARED=@LDSHARED@
+LDFLAGS=@LDFLAGS@
+CFLAGS=$(COMMON_CFLAGS) $(XCFLAGS) @XCFLAGS@
+
+all: mozplugger.so mozplugger-helper mozplugger-controller mozplugger-linker
+
+mozplugger-helper: mozplugger-helper.o mozplugger-common.o child.o debug.o
+	$(CC) $(LDFLAGS) -o mozplugger-helper mozplugger-helper.o mozplugger-common.o child.o debug.o $(XLIBS)
+
+mozplugger-helper.o: mozplugger-helper.c mozplugger.h child.h debug.h config.h
+	$(CC) -c $(CFLAGS) -o mozplugger-helper.o '$(srcdir)/mozplugger-helper.c'
+
+mozplugger.so: mozplugger.o npunix.o mozplugger-common.o debug.o npn-get-helpers.o
+	$(LDSHARED) $(LDFLAGS) -o mozplugger.so mozplugger.o mozplugger-common.o npunix.o debug.o npn-get-helpers.o $(XLIBS)
+
+mozplugger-common.o: mozplugger-common.c mozplugger.h config.h
+	$(CC) -c $(CFLAGS) -o mozplugger-common.o '$(srcdir)/mozplugger-common.c'
+
+mozplugger.o: mozplugger.c mozplugger.h config.h npn-get-helpers.h
+	$(CC) -c $(CFLAGS) -o mozplugger.o '$(srcdir)/mozplugger.c'
+
+npunix.o: $(srcdir)/npapi/common/npunix.c config.h
+	$(CC) -c $(CFLAGS) -o npunix.o '$(srcdir)/npapi/common/npunix.c'
+
+child.o: child.c child.h debug.h mozplugger.h config.h
+	$(CC) -c $(CFLAGS) -o child.o '$(srcdir)/child.c'
+
+debug.o: debug.c debug.h config.h
+	$(CC) -c $(CFLAGS) -o debug.o '$(srcdir)/debug.c'
+
+npn-get-helpers.o: npn-get-helpers.c npn-get-helpers.h debug.h
+	$(CC) -c $(CFLAGS) -o npn-get-helpers.o '$(srcdir)/npn-get-helpers.c'
+
+mozplugger-controller: mozplugger-controller.o mozplugger-common.o child.o debug.o
+	$(CC) -o mozplugger-controller mozplugger-controller.o mozplugger-common.o child.o debug.o $(LDFLAGS) $(XLIBS) 
+
+mozplugger-controller.o: mozplugger-controller.c mozplugger.h child.h debug.h config.h
+	$(CC) -c $(CFLAGS) -o mozplugger-controller.o '$(srcdir)/mozplugger-controller.c'
+
+mozplugger-linker: mozplugger-linker.o mozplugger-common.o child.o debug.o
+	$(CC) -o mozplugger-linker mozplugger-linker.o mozplugger-common.o child.o debug.o $(LDFLAGS) $(XLIBS)
+
+mozplugger-linker.o: mozplugger-linker.c mozplugger.h child.h debug.h config.h
+	$(CC) -c $(CFLAGS) -o mozplugger-linker.o '$(srcdir)/mozplugger-linker.c'
+
+$(srcdir)/configure: configure.ac
+	cd '$(srcdir)' && autoconf
+
+Makefile: Makefile.in config.status
+	./config.status
+
+config.h: config.h.in config.status
+	./config.status
+
+config.status: configure
+	./config.status --recheck
+	
+clean:
+	-rm -f *.o npapi/common/*.o *.gcda *.gcno *.so
+	-rm -f mozplugger-helper mozplugger-controller mozplugger-linker
+
+distclean: clean
+	-rm -f *~ core 
+	-rm -f config.h config.status config.log Makefile
+	-rm -rf autom4te.cache
+	-rm -rf rpmtmp
+
+localinstall: mozplugger.so mozplugger-helper mozplugger-controller mozplugger-linker
+	-@$(MKDIR) $$HOME/$(BROWSERDIR)/plugins
+	cp mozplugger.so $$HOME/$(BROWSERDIR)/plugins/
+	cp mozplugger-helper $$HOME/$(BROWSERDIR)/
+	cp mozplugger-controller $$HOME/$(BROWSERDIR)/
+	cp mozplugger-linker $$HOME/$(BROWSERDIR)/
+	if [ -f $$HOME/$(BROWSERDIR)/mozpluggerrc ]; then mv $$HOME/$(BROWSERDIR)/mozpluggerrc $$HOME/$(BROWSERDIR)/mozpluggerrc.old; fi
+	cp mozpluggerrc $$HOME/$(BROWSERDIR)/
+
+localinstall_mozilla:
+	make localinstall BROWSERDIR=.mozilla
+
+localinstall_netscape:
+	make localinstall BROWSERDIR=.netscape
+
+localinstall_opera:
+	make localinstall BROWSERDIR=.opera
+
+install:
+	-@install -d @bindir@
+	-@install -d $(prefix)$(libprefix)/mozilla/plugins
+	-@install -d @mandir@/man7
+	-@install -d @sysconfdir@
+	install mozplugger-helper     @bindir@
+	install mozplugger-controller @bindir@
+	install mozplugger-linker     @bindir@
+	for a in ${PLUGINDIRS}; do install mozplugger.so $$a ; done
+#	cp mozplugger.so $(prefix)$(libprefix)/mozilla/plugins/
+	install $(srcdir)/mozpluggerrc  @sysconfdir@
+	install $(srcdir)/mozplugger.7  @mandir@/man7/
+
+uninstall:
+	rm -f @mandir@/man7/mozplugger.7
+	rm -f @sysconfdir@/mozpluggerrc
+	for target in ${PLUGINDIRS}; do rm -f $${target}/mozplugger.so; done
+	rm -f @bindir@/mozplugger-linker
+	rm -f @bindir@/mozplugger-controller
+	rm -f @bindir@/mozplugger-helper
+	-rmdir @sysconfdir@
+	-rmdir @mandir@/man7
+	-rmdir @mandir@
+	-rmdir @bindir@
+
+MOZ_PACKAGE=mozplugger-@PACKAGE_VERSION@
+
+${MOZ_PACKAGE}.tar.gz: $(SOURCE_FILES)
+	rm -rf   ${MOZ_PACKAGE}
+	mkdir -p ${MOZ_PACKAGE}/npapi/common
+	mkdir -p ${MOZ_PACKAGE}/npapi/include
+	for a in $(SOURCE_FILES); do cp ${srcdir}/$$a ${MOZ_PACKAGE}/$$a ; done
+	tar -zcvf ${MOZ_PACKAGE}.tar.gz ${MOZ_PACKAGE}
+	rm -rf   ${MOZ_PACKAGE}
+
+dist: ${MOZ_PACKAGE}.tar.gz
+
+bin_export: mozplugger-bin.tar.gz
+
+echo_version:
+	@echo @PACKAGE_VERSION@
+
+rpm: $(RPMDIR)/SOURCES/mozplugger.tar.gz $(srcdir)/mozplugger.spec
+	rm -rf rpmtmp ||:
+	mkdir rpmtmp
+	mkdir rpmtmp/usr
+	mkdir rpmtmp/etc
+	mkdir rpmtmp/opt
+	mkdir rpmtmp/usr/local
+	rpm -ba --buildroot `pwd`/rpmtmp mozplugger.spec
+	cp $(RPMDIR)/SRPMS/mozplugger-1.src.rpm .
+	cp $(RPMDIR)/RPMS/*/mozplugger-1.*.rpm .
+	rm -rf rpmtmp
+
+$(RPMDIR)/SOURCES/mozplugger.tar.gz: ${MOZ_PACKAGE}.tar.gz
+	cp ${MOZ_PACKAGE}.tar.gz $(RPMDIR)/SOURCES/mozplugger.tar.gz
+
+mozplugger-bin.tar.gz: $(SOURCE_FILES) $(BIN_FILES)
+	@( DIR=`pwd`;\
+          BASE=`basename $$DIR`;\
+	  cd .. ; \
+	  if [ "$$BASE" != "mozplugger" ]; then \
+	    ln -s "$$BASE" mozplugger ; \
+          fi ;\
+	  tar cf - `for a in $(BIN_FILES); do echo mozplugger/$$a ; done` | gzip -9 >mozplugger/mozplugger-bin.tar.gz  ;\
+          if [ "$$BASE" != "mozplugger" ]; then \
+	    rm mozplugger ; \
+          fi ;\
+	)
