@@ -1,8 +1,11 @@
 *.o
 *.so
+/.pc/
 /config.h
 /config.log
 /config.status
+/debian/mozplugger.debhelper.log
+/debian/mozplugger/
 /mozplugger-*.tar.gz
 /mozplugger-controller
 /mozplugger-helper
