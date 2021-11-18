@@ -1,0 +1,10 @@
+*.o
+*.so
+/config.h
+/config.log
+/config.status
+/mozplugger-*.tar.gz
+/mozplugger-controller
+/mozplugger-helper
+/mozplugger-linker
+Makefile
