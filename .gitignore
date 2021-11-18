@@ -1,3 +1,4 @@
+*.d
 *.o
 *.so
 /.pc/
@@ -10,4 +11,5 @@
 /mozplugger-controller
 /mozplugger-helper
 /mozplugger-linker
+/mozplugger-update
 Makefile
